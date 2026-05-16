@@ -1,0 +1,59 @@
+# ── Build output ───────────────────────────────────────────
+bin/
+obj/
+out/
+
+# ── VS & Rider ─────────────────────────────────────────────
+.vs/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.rsuser
+
+# ── .NET ───────────────────────────────────────────────────
+*.dll
+*.exe
+*.pdb
+*.cache
+*.log
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# ── EF Core migrations (keep) ──────────────────────────────
+# Do NOT ignore migrations — commit them
+!**/Migrations/
+
+# ── Aspire ─────────────────────────────────────────────────
+.aspire/
+launchSettings.json
+
+# ── Secrets & config ───────────────────────────────────────
+appsettings.Development.json
+appsettings.Local.json
+secrets.json
+*.pfx
+*.p12
+
+# ── NuGet ──────────────────────────────────────────────────
+*.nupkg
+*.snupkg
+.nuget/
+packages/
+nuget.config.local
+
+# ── Docker ─────────────────────────────────────────────────
+.dockerignore
+
+# ── Node (if frontend added later) ─────────────────────────
+node_modules/
+dist/
+.env
+.env.local
+
+# ── OS ─────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini

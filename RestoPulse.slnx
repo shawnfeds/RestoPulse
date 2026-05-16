@@ -1,0 +1,40 @@
+<Solution>
+  <Folder Name="/AppHost/">
+    <Project Path="AppHost/RestoPulse.AppHost.csproj" />
+  </Folder>
+  <Folder Name="/ServiceDefaults/">
+    <Project Path="ServiceDefaults/RestoPulse.ServiceDefaults.csproj" />
+  </Folder>
+  <Folder Name="/Services/" />
+  <Folder Name="/Services/BillingService/">
+    <Project Path="Services/BillingService/RestoPulse.BillingService.csproj" />
+  </Folder>
+  <Folder Name="/Services/GatewayService/">
+    <Project Path="Services/GatewayService/RestoPulse.GatewayService.csproj" />
+  </Folder>
+  <Folder Name="/Services/InventoryService/">
+    <Project Path="Services/InventoryService/RestoPulse.InventoryService.csproj" />
+  </Folder>
+  <Folder Name="/Services/KitchenService/">
+    <Project Path="Services/KitchenService/RestoPulse.KitchenService.csproj" />
+  </Folder>
+  <Folder Name="/Services/MenuService/">
+    <Project Path="Services/MenuService/RestoPulse.MenuService.csproj" />
+  </Folder>
+  <Folder Name="/Services/OrderService/">
+    <Project Path="Services/OrderService/RestoPulse.OrderService.csproj" />
+  </Folder>
+  <Folder Name="/Services/ReportService/">
+    <Project Path="Services/ReportService/RestoPulse.ReportService.csproj" />
+  </Folder>
+  <Folder Name="/Services/TableService/">
+    <Project Path="Services/TableService/RestoPulse.TableService.csproj" />
+  </Folder>
+  <Folder Name="/Shared/" />
+  <Folder Name="/Shared/Contracts/">
+    <Project Path="Shared/Contracts/RestoPulse.Contracts.csproj" />
+  </Folder>
+  <Folder Name="/Shared/SharedKernel/">
+    <Project Path="Shared/SharedKernel/RestoPulse.SharedKernel.csproj" />
+  </Folder>
+</Solution>

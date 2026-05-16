@@ -1,0 +1,28 @@
+<Project Sdk="Aspire.AppHost.Sdk/13.3.1">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <UserSecretsId>c30a32f4-33a6-46ec-a1e2-3babf87e1521</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.AppHost" Version="13.3.1" />
+    <PackageReference Include="Aspire.Hosting.RabbitMQ" Version="13.3.1" />
+    <PackageReference Include="Aspire.Hosting.SqlServer" Version="13.3.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Services\MenuService\RestoPulse.MenuService.csproj" />
+    <ProjectReference Include="..\Services\TableService\RestoPulse.TableService.csproj" />
+    <ProjectReference Include="..\Services\OrderService\RestoPulse.OrderService.csproj" />
+    <ProjectReference Include="..\Services\KitchenService\RestoPulse.KitchenService.csproj" />
+    <ProjectReference Include="..\Services\BillingService\RestoPulse.BillingService.csproj" />
+    <ProjectReference Include="..\Services\InventoryService\RestoPulse.InventoryService.csproj" />
+    <ProjectReference Include="..\Services\ReportService\RestoPulse.ReportService.csproj" />
+    <ProjectReference Include="..\Services\GatewayService\RestoPulse.GatewayService.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,6 @@
+@RestoPulse.TableService_HostAddress = http://localhost:5078
+
+GET {{RestoPulse.TableService_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
