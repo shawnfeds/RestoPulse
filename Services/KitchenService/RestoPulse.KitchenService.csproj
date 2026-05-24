@@ -21,17 +21,13 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\ServiceDefaults\RestoPulse.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\OrderService\RestoPulse.OrderService.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <Folder Include="Api\Endpoints\" />
     <Folder Include="Api\Validators\" />
-    <Folder Include="Application\Commands\" />
     <Folder Include="Application\Mappings\" />
-    <Folder Include="Application\Queries\" />
-    <Folder Include="Contracts\" />
-    <Folder Include="Domains\Entities\" />
-    <Folder Include="Domains\Enums\" />
     <Folder Include="Domains\Events\" />
     <Folder Include="Infrastructure\Messaging\" />
     <Folder Include="Infrastructure\Persistence\Migrations\" />
