@@ -21,6 +21,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\ServiceDefaults\RestoPulse.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\OrderService\RestoPulse.OrderService.csproj" />
   </ItemGroup>
 
   <ItemGroup>
