@@ -18,7 +18,7 @@ public class OrderCreatedConsumer(KitchenDbContext db) : IConsumer<OrderCreatedE
                 msg.OrderNo, msg.TableNo,
                 item.MenuItemId, item.Name,
                 item.Qty, item.Notes,
-                category: "Main"); // you can enrich this from MenuService later
+                category: "Main");
 
             db.Tickets.Add(ticket);
         }
