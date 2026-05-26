@@ -69,6 +69,6 @@ builder.AddProject<Projects.RestoPulse_GatewayService>("gateway-service")
     .WithReference(billingSvc)
     .WithReference(inventorySvc)
     .WithReference(reportSvc)
-    .WithExternalHttpEndpoints();  // only gateway is public-facing
+    .WithExternalHttpEndpoints();
 
 builder.Build().Run();
