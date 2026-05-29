@@ -33,7 +33,7 @@ builder.Services
 builder.Services.AddAuthorization(opts =>
 {
     // All proxied routes require an authenticated user by default
-    opts.AddPolicy("default", policy => policy.RequireAuthenticatedUser());
+    opts.AddPolicy("RestroAuth", policy => policy.RequireAuthenticatedUser());
 });
 
 // ── CORS ──────────────────────────────────────────────────────────────────────
