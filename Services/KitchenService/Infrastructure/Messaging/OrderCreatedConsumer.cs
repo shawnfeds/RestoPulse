@@ -1,7 +1,7 @@
-﻿using MassTransit;
+using MassTransit;
 using RestoPulse.KitchenService.Domain.Entities;
 using RestoPulse.KitchenService.Infrastructure.Persistence;
-using RestoPulse.OrderService.Domain.Events;
+using RestoPulse.Contracts;
 
 namespace RestoPulse.KitchenService.Infrastructure.Messaging;
 

@@ -1,4 +1,4 @@
-﻿using MediatR;
+using MediatR;
 using RestoPulse.ReportService.Application.Queries;
 
 namespace RestoPulse.ReportService.Api.Endpoints;
@@ -7,9 +7,7 @@ public static class ReportEndpoints
 {
     public static IEndpointRouteBuilder MapReportEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/reports").WithTags("Reports").RequireAuthorization();
-
-        group.MapGet("/revenue", async (
+        app.MapGet("/revenue", async (
             DateTime? from,
             DateTime? to,
             IMediator mediator,
@@ -27,16 +25,16 @@ public static class ReportEndpoints
         .WithName("GetRevenue")
         .WithSummary("Get revenue report for a date range");
 
-        group.MapGet("/top-items", async (
+        app.MapGet("/top-items", async (
             DateTime? from,
             DateTime? to,
-            int limit,
+            int? limit,
             IMediator mediator,
             CancellationToken ct) =>
         {
             var fromDate = from ?? DateTime.UtcNow.AddDays(-30);
             var toDate = to ?? DateTime.UtcNow;
-            var safeLimit = Math.Clamp(limit <= 0 ? 10 : limit, 1, 50);
+            var safeLimit = Math.Clamp((limit ?? 10) <= 0 ? 10 : limit ?? 10, 1, 50);
 
             if (fromDate > toDate)
                 return Results.BadRequest("'from' must be earlier than 'to'.");

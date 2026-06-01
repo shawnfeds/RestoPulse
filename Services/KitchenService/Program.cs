@@ -15,17 +15,20 @@ builder.Services.AddDbContext<KitchenDbContext>(options =>
 builder.Services.AddMediatR(cfg =>
     cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
 
-builder.Services.AddMassTransit(x =>
+var messagingConnectionString = builder.Configuration.GetConnectionString("messaging");
+if (!string.IsNullOrEmpty(messagingConnectionString))
 {
-    // Register consumer — this creates the queue automatically
-    x.AddConsumer<OrderCreatedConsumer>();
-
-    x.UsingRabbitMq((ctx, cfg) =>
+    builder.Services.AddMassTransit(x =>
     {
-        cfg.Host(builder.Configuration.GetConnectionString("messaging"));
-        cfg.ConfigureEndpoints(ctx);
+        x.AddConsumer<OrderCreatedConsumer>();
+
+        x.UsingRabbitMq((ctx, cfg) =>
+        {
+            cfg.Host(messagingConnectionString);
+            cfg.ConfigureEndpoints(ctx);
+        });
     });
-});
+}
 
 builder.Services.AddOpenApi();
 
@@ -38,9 +41,17 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
     app.MapScalarApiReference();
 
-    using var scope = app.Services.CreateScope();
-    var db = scope.ServiceProvider.GetRequiredService<KitchenDbContext>();
-    await db.Database.MigrateAsync();
+    try
+    {
+        using var scope = app.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<KitchenDbContext>();
+        await db.Database.MigrateAsync();
+    }
+    catch (Exception ex)
+    {
+        var logger = app.Services.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "Migration failed. Service will continue and retry on subsequent database operations.");
+    }
 }
 
 var kitchen = app.MapGroup("/api/kitchen").WithTags("Kitchen");

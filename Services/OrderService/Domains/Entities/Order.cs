@@ -1,5 +1,5 @@
-﻿using RestoPulse.OrderService.Domain.Enums;
-using RestoPulse.OrderService.Domain.Events;
+using RestoPulse.OrderService.Domain.Enums;
+using RestoPulse.Contracts;
 
 namespace RestoPulse.OrderService.Domain.Entities;
 

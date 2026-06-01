@@ -9,8 +9,16 @@ public static class MenuItemEndpoints
 {
     public static RouteGroupBuilder MapMenuItemEndpoints(this RouteGroupBuilder group)
     {
-        group.MapGet("/", async (int? categoryId, IMediator mediator) =>
-            Results.Ok(await mediator.Send(new GetMenuItemsQuery(categoryId))))
+        group.MapGet("/", async (string? categoryId, IMediator mediator) =>
+        {
+            // Handle empty categoryId from query param (e.g., ?categoryId=)
+            int? catId = null;
+            if (!string.IsNullOrWhiteSpace(categoryId) && int.TryParse(categoryId, out var parsedId))
+                catId = parsedId;
+
+            var result = await mediator.Send(new GetMenuItemsQuery(catId));
+            return Results.Ok(result);
+        })
             .WithName("GetMenuItems")
             .WithSummary("Get menu items, optionally filtered by category");
 

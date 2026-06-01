@@ -1,7 +1,7 @@
-﻿using MassTransit;
+using MassTransit;
 using MediatR;
 using RestoPulse.InventoryService.Application.Commands;
-using RestoPulse.OrderService.Domain.Events;
+using RestoPulse.Contracts;
 
 namespace RestoPulse.InventoryService.Infrastructure.Messaging;
 

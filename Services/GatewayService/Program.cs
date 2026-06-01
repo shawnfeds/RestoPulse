@@ -9,31 +9,43 @@ builder.Services
     .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"))
     .AddServiceDiscoveryDestinationResolver();
 
-// ── JWT Bearer ────────────────────────────────────────────────────────────────
-builder.Services
-    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
-    {
-        options.Authority = builder.Configuration["Jwt:Authority"];
-        options.Audience = builder.Configuration["Jwt:Audience"];
-        options.RequireHttpsMetadata = !builder.Environment.IsDevelopment();
+// ── JWT Bearer (optional in development) ───────────────────────────────────────
+var jwtAuthority = builder.Configuration["Jwt:Authority"];
+var jwtAudience  = builder.Configuration["Jwt:Audience"];
+var jwtConfigured = !string.IsNullOrWhiteSpace(jwtAuthority) &&
+                    !jwtAuthority.Contains("your-identity-provider", StringComparison.OrdinalIgnoreCase);
 
-        options.Events = new JwtBearerEvents
+if (jwtConfigured)
+{
+    builder.Services
+        .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+        .AddJwtBearer(options =>
         {
-            OnAuthenticationFailed = ctx =>
+            options.Authority = jwtAuthority;
+            options.Audience = jwtAudience;
+            options.RequireHttpsMetadata = !builder.Environment.IsDevelopment();
+
+            options.Events = new JwtBearerEvents
             {
-                var logger = ctx.HttpContext.RequestServices
-                    .GetRequiredService<ILogger<Program>>();
-                logger.LogWarning("JWT auth failed: {Error}", ctx.Exception.Message);
-                return Task.CompletedTask;
-            }
-        };
-    });
+                OnAuthenticationFailed = ctx =>
+                {
+                    var logger = ctx.HttpContext.RequestServices
+                        .GetRequiredService<ILogger<Program>>();
+                    logger.LogWarning("JWT auth failed: {Error}", ctx.Exception.Message);
+                    return Task.CompletedTask;
+                }
+            };
+        });
+}
 
 builder.Services.AddAuthorization(opts =>
 {
-    // All proxied routes require an authenticated user by default
-    opts.AddPolicy("RestroAuth", policy => policy.RequireAuthenticatedUser());
+    // Always define RestroAuth policy - either strict or permissive based on config
+    if (jwtConfigured)
+        opts.AddPolicy("RestroAuth", policy => policy.RequireAuthenticatedUser());
+    else
+        // In dev without real auth provider, allow all requests
+        opts.AddPolicy("RestroAuth", policy => policy.RequireAssertion(_ => true));
 });
 
 // ── CORS ──────────────────────────────────────────────────────────────────────
@@ -56,8 +68,16 @@ var app = builder.Build();
 app.MapDefaultEndpoints();
 
 app.UseCors();
-app.UseAuthentication();
+
+// Always use authorization (RestroAuth policy is always defined above)
+if (jwtConfigured)
+{
+    app.UseAuthentication();
+}
 app.UseAuthorization();
+
+app.UseDefaultFiles();
+app.UseStaticFiles();
 
 // YARP middleware — must come after auth
 app.MapReverseProxy(pipeline =>
