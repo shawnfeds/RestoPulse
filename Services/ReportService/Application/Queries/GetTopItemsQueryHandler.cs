@@ -1,4 +1,4 @@
-﻿using MediatR;
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 using RestoPulse.ReportService.Infrastructure.Persistence;
 
@@ -12,15 +12,19 @@ public class GetTopItemsQueryHandler(ReportDbContext db)
         var results = await db.ItemSales
             .Where(r => r.OrderedAt >= request.From && r.OrderedAt <= request.To)
             .GroupBy(r => new { r.MenuItemId, r.ItemName })
-            .Select(g => new TopItemDto(
+            .Select(g => new
+            {
                 g.Key.MenuItemId,
                 g.Key.ItemName,
-                g.Sum(x => x.Quantity),
-                g.Sum(x => x.Quantity * x.UnitPrice)))
+                TotalQuantity = g.Sum(x => x.Quantity),
+                TotalRevenue  = g.Sum(x => (decimal)x.Quantity * x.UnitPrice)
+            })
             .OrderByDescending(x => x.TotalQuantity)
             .Take(request.Limit)
             .ToListAsync(ct);
 
-        return results;
+        return results
+            .Select(x => new TopItemDto(x.MenuItemId, x.ItemName, x.TotalQuantity, x.TotalRevenue))
+            .ToList();
     }
 }

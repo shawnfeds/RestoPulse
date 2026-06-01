@@ -7,9 +7,7 @@ public static class DashboardEndpoints
 {
     public static IEndpointRouteBuilder MapDashboardEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/dashboard").WithTags("Dashboard");
-
-        group.MapGet("/summary", async (IMediator mediator, CancellationToken ct) =>
+        app.MapGet("/summary", async (IMediator mediator, CancellationToken ct) =>
         {
             var result = await mediator.Send(new GetDashboardSummaryQuery(), ct);
             return Results.Ok(result);
@@ -17,6 +15,6 @@ public static class DashboardEndpoints
         .WithName("GetDashboardSummary")
         .WithSummary("Get dashboard summary with live metrics, occupancy, and recent orders");
 
-        return group;
+        return app;
     }
 }
