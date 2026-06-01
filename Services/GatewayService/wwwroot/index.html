@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RestoPulse — Restaurant Management</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ══════════════════════════════════════════
+       SIDEBAR
+  ══════════════════════════════════════════ -->
+  <nav id="sidebar">
+
+    <div class="sidebar-logo">
+      <div class="logo-mark">R</div>
+      <div class="logo-text">Resto<span>Pulse</span></div>
+    </div>
+
+    <div class="sidebar-nav">
+
+      <div class="nav-section-label">Overview</div>
+      <div class="nav-item active" data-page="dashboard">
+        <span class="nav-icon">⊞</span> Dashboard
+      </div>
+
+      <div class="nav-section-label">Operations</div>
+      <div class="nav-item" data-page="tables">
+        <span class="nav-icon">🪑</span> Tables
+      </div>
+      <div class="nav-item" data-page="orders">
+        <span class="nav-icon">🧾</span> Orders
+      </div>
+      <div class="nav-item" data-page="kitchen">
+        <span class="nav-icon">🍳</span> Kitchen
+      </div>
+      <div class="nav-item" data-page="billing">
+        <span class="nav-icon">💳</span> Billing
+      </div>
+
+      <div class="nav-section-label">Management</div>
+      <div class="nav-item" data-page="menu">
+        <span class="nav-icon">📋</span> Menu
+      </div>
+      <div class="nav-item" data-page="inventory">
+        <span class="nav-icon">📦</span> Inventory
+      </div>
+      <div class="nav-item" data-page="reports">
+        <span class="nav-icon">📊</span> Reports
+      </div>
+
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="outlet-info">
+        <div class="outlet-avatar">🏠</div>
+        <div>
+          <div class="outlet-name">The Grand Table</div>
+          <div class="outlet-role">Manager</div>
+        </div>
+      </div>
+    </div>
+
+  </nav>
+
+  <!-- ══════════════════════════════════════════
+       MAIN CONTENT
+  ══════════════════════════════════════════ -->
+  <div id="main">
+
+    <!-- Topbar -->
+    <div id="topbar">
+      <div>
+        <div class="topbar-title" id="topbar-title">Dashboard</div>
+        <div class="topbar-subtitle" id="topbar-sub">Live overview</div>
+      </div>
+      <div style="margin-left:auto;display:flex;align-items:center;gap:10px">
+        <div style="display:flex;align-items:center;gap:6px;padding:5px 10px;background:var(--bg-raised);border-radius:var(--radius-md);border:1px solid var(--border-subtle)">
+          <span class="live-dot"></span>
+          <span style="font-size:12px;color:var(--text-muted)">Live</span>
+        </div>
+        <div style="font-size:12px;color:var(--text-muted)" id="topbar-clock"></div>
+        <button class="btn btn-ghost btn-icon" title="Notifications">🔔</button>
+        <div style="width:32px;height:32px;background:var(--rp-brand-soft);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--rp-brand);font-weight:600;border:1px solid var(--rp-brand-glow)">M</div>
+      </div>
+    </div>
+
+    <!-- Page content -->
+    <div id="page-content">
+
+      <div class="page active" id="page-dashboard"></div>
+      <div class="page" id="page-tables"></div>
+      <div class="page" id="page-orders"></div>
+      <div class="page" id="page-kitchen"></div>
+      <div class="page" id="page-billing"></div>
+      <div class="page" id="page-menu"></div>
+      <div class="page" id="page-inventory"></div>
+      <div class="page" id="page-reports"></div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div id="toast-container"></div>
+
+<!-- ══════════════════════════════════════════
+     SCRIPTS — order matters
+══════════════════════════════════════════ -->
+<script src="components/js/app.js"></script>
+<script src="components/modules/dashboard.js"></script>
+<script src="components/modules/tables.js"></script>
+<script src="components/modules/orders.js"></script>
+<script src="components/modules/kitchen.js"></script>
+<script src="components/modules/billing.js"></script>
+<script src="components/modules/menu-inventory-reports.js"></script>
+
+<script>
+  // Live clock
+  function updateClock() {
+    const now = new Date();
+    document.getElementById('topbar-clock').textContent =
+      now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  }
+  updateClock();
+  setInterval(updateClock, 1000);
+</script>
+
+</body>
+</html>

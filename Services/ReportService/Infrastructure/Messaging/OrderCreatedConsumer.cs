@@ -1,6 +1,6 @@
-﻿using MassTransit;
+using MassTransit;
 using Microsoft.EntityFrameworkCore;
-using RestoPulse.OrderService.Domain.Events;
+using RestoPulse.Contracts;
 using RestoPulse.ReportService.Domain.Entities;
 using RestoPulse.ReportService.Infrastructure.Persistence;
 

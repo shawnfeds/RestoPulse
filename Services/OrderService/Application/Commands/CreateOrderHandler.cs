@@ -1,13 +1,11 @@
-﻿using MassTransit;
-using MediatR;
+﻿using MediatR;
 using RestoPulse.OrderService.Contracts;
 using RestoPulse.OrderService.Domain.Entities;
-using RestoPulse.OrderService.Domain.Events;
 using RestoPulse.OrderService.Infrastructure.Persistence;
 
 namespace RestoPulse.OrderService.Application.Commands;
 
-public class CreateOrderHandler(OrderDbContext db, IPublishEndpoint bus)
+public class CreateOrderHandler(OrderDbContext db)
     : IRequestHandler<CreateOrderCommand, OrderResponse>
 {
     public async Task<OrderResponse> Handle(
@@ -17,8 +15,6 @@ public class CreateOrderHandler(OrderDbContext db, IPublishEndpoint bus)
         db.Orders.Add(order);
         await db.SaveChangesAsync(ct);
 
-        foreach (var evt in order.Events)
-            await bus.Publish(evt, ct);
         order.ClearEvents();
 
         return new OrderResponse(

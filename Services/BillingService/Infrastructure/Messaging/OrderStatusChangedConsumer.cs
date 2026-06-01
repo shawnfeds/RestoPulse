@@ -1,7 +1,7 @@
-﻿using MassTransit;
+using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using RestoPulse.BillingService.Infrastructure.Persistence;
-using RestoPulse.OrderService.Domain.Events;
+using RestoPulse.Contracts;
 
 namespace RestoPulse.BillingService.Infrastructure.Messaging;
 

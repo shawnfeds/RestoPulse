@@ -16,23 +16,25 @@ builder.Services.AddDbContext<ReportDbContext>(opts =>
 builder.Services.AddMediatR(cfg =>
     cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
 
+// HttpClient for service-to-service calls
+builder.Services.AddHttpClient();
+
 // MassTransit + RabbitMQ
-builder.Services.AddMassTransit(x =>
+var messagingConnectionString = builder.Configuration.GetConnectionString("messaging");
+if (!string.IsNullOrEmpty(messagingConnectionString))
 {
-    x.AddConsumer<BillSettledConsumer>();
-    x.AddConsumer<OrderCreatedConsumer>();
-
-    x.UsingRabbitMq((ctx, cfg) =>
+    builder.Services.AddMassTransit(x =>
     {
-        cfg.Host(builder.Configuration.GetConnectionString("rabbitmq"));
+        x.AddConsumer<BillSettledConsumer>();
+        x.AddConsumer<OrderCreatedConsumer>();
 
-        cfg.ReceiveEndpoint("report-bill-settled", e =>
-            e.ConfigureConsumer<BillSettledConsumer>(ctx));
-
-        cfg.ReceiveEndpoint("report-order-created", e =>
-            e.ConfigureConsumer<OrderCreatedConsumer>(ctx));
+        x.UsingRabbitMq((ctx, cfg) =>
+        {
+            cfg.Host(messagingConnectionString);
+            cfg.ConfigureEndpoints(ctx);
+        });
     });
-});
+}
 
 builder.Services.AddOpenApi();
 
@@ -45,12 +47,23 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
     app.MapScalarApiReference();
 
-    using var scope = app.Services.CreateScope();
-    var db = scope.ServiceProvider.GetRequiredService<ReportDbContext>();
-    await db.Database.MigrateAsync();
+    try
+    {
+        using var scope = app.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ReportDbContext>();
+        await db.Database.MigrateAsync();
+    }
+    catch (Exception ex)
+    {
+        var logger = app.Services.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "Migration failed. Service will continue and retry on subsequent database operations.");
+    }
 }
 
 var reports = app.MapGroup("/api/reports").WithTags("Reports");
 reports.MapReportEndpoints();
+
+var dashboards = app.MapGroup("/api/dashboard/").WithTags("Dashboards");
+dashboards.MapDashboardEndpoints();
 
 app.Run();

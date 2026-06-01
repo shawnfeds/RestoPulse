@@ -24,9 +24,17 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
     app.MapScalarApiReference();
 
-    using var scope = app.Services.CreateScope();
-    var db = scope.ServiceProvider.GetRequiredService<MenuDbContext>();
-    await db.Database.MigrateAsync();
+    try
+    {
+        using var scope = app.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<MenuDbContext>();
+        await db.Database.MigrateAsync();
+    }
+    catch (Exception ex)
+    {
+        var logger = app.Services.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "Migration failed. Service will continue and retry on subsequent database operations.");
+    }
 }
 
 var menu = app.MapGroup("/api/menu").WithTags("Menu");

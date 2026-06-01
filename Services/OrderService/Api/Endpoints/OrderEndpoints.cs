@@ -3,6 +3,8 @@ using Microsoft.EntityFrameworkCore;
 using RestoPulse.OrderService.Application.Commands;
 using RestoPulse.OrderService.Application.Queries;
 using RestoPulse.OrderService.Contracts;
+using RestoPulse.OrderService.Domain.Enums;
+using RestoPulse.OrderService.Infrastructure.Persistence;
 
 namespace RestoPulse.OrderService.Api.Endpoints;
 
@@ -86,6 +88,16 @@ public static class OrderEndpoints
         })
         .WithName("VoidOrder")
         .WithSummary("Void an order");
+
+        group.MapGet("/summary", async (OrderDbContext db, CancellationToken ct) =>
+        {
+            var today = DateTime.UtcNow.Date;
+            return Results.Ok(new
+            {
+                ActiveOrders = await db.Orders.CountAsync(o => o.Status == OrderStatus.New, ct),
+                TodayOrders = await db.Orders.CountAsync(o => o.CreatedAt >= today, ct),
+            });
+        });
 
         return group;
     }

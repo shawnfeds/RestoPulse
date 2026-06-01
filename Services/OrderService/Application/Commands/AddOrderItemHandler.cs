@@ -1,7 +1,9 @@
-﻿using MassTransit;
+using MassTransit;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using RestoPulse.OrderService.Contracts;
+using RestoPulse.OrderService.Domain.Entities;
+using RestoPulse.Contracts;
 using RestoPulse.OrderService.Infrastructure.Persistence;
 
 namespace RestoPulse.OrderService.Application.Commands;
@@ -18,13 +20,27 @@ public class AddOrderItemHandler(OrderDbContext db, IPublishEndpoint bus)
 
         if (order is null) return null;
 
+        var isFirstItem = order.Items.Count == 0;
+
         order.AddItem(cmd.MenuItemId, cmd.Name, cmd.Price, cmd.Qty, cmd.Notes);
         await db.SaveChangesAsync(ct);
 
-        // Publish updated OrderCreated so Kitchen gets new items
-        foreach (var evt in order.Events)
-            await bus.Publish(evt, ct);
-        order.ClearEvents();
+        if (isFirstItem)
+        {
+            var orderCreatedEvent = new OrderCreatedEvent(
+                order.OrderNo, order.TableId, order.TableNo, order.StaffName)
+            {
+                Items = order.Items.Select(i => new OrderCreatedEventItem(
+                    i.MenuItemId, i.Name, i.Price, i.Qty, i.Notes)).ToList()
+            };
+            await bus.Publish(orderCreatedEvent, ct);
+        }
+        else
+        {
+            foreach (var evt in order.Events)
+                await bus.Publish(evt, ct);
+            order.ClearEvents();
+        }
 
         return new OrderResponse(
             order.Id, order.OrderNo, order.TableId, order.TableNo,

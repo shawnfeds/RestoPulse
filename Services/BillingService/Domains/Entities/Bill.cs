@@ -1,5 +1,5 @@
-﻿using RestoPulse.BillingService.Domain.Enums;
-using RestoPulse.BillingService.Domain.Events;
+using RestoPulse.BillingService.Domain.Enums;
+using RestoPulse.Contracts;
 
 namespace RestoPulse.BillingService.Domain.Entities;
 
