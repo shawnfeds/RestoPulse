@@ -1,7 +1,46 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults();
+
+// ── Rate Limiting ─────────────────────────────────────────────────────────────
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("sliding-policy", httpContext =>
+    {
+        var clientIp = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+
+        // Get matched YARP route ID if available to partition per client IP per API route
+        var endpoint = httpContext.GetEndpoint();
+        var routeId = endpoint?.Metadata.GetMetadata<Yarp.ReverseProxy.Model.RouteModel>()?.Config.RouteId 
+                      ?? httpContext.Request.Path.Value 
+                      ?? "default";
+
+        var partitionKey = $"{clientIp}:{routeId}";
+
+        var config = httpContext.RequestServices.GetRequiredService<IConfiguration>();
+        var rateLimitConfig = config.GetSection("RateLimiting");
+
+        var permitLimit = rateLimitConfig.GetValue<int>("PermitLimit", 60);
+        var windowSeconds = rateLimitConfig.GetValue<int>("WindowSeconds", 60);
+        var segmentsPerWindow = rateLimitConfig.GetValue<int>("SegmentsPerWindow", 6);
+        var queueLimit = rateLimitConfig.GetValue<int>("QueueLimit", 1000);
+
+        return RateLimitPartition.GetSlidingWindowLimiter(
+            partitionKey: partitionKey,
+            factory: _ => new SlidingWindowRateLimiterOptions
+            {
+                PermitLimit = permitLimit,
+                Window = TimeSpan.FromSeconds(windowSeconds),
+                SegmentsPerWindow = segmentsPerWindow,
+                QueueLimit = queueLimit,
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst
+            });
+    });
+});
 
 // ── YARP ──────────────────────────────────────────────────────────────────────
 builder.Services
@@ -75,6 +114,8 @@ if (jwtConfigured)
     app.UseAuthentication();
 }
 app.UseAuthorization();
+
+app.UseRateLimiter();
 
 app.UseDefaultFiles();
 app.UseStaticFiles();
