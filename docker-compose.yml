@@ -1,0 +1,201 @@
+version: '3.8'
+
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: sqlserver
+    # NOTE FOR ARM64/MAC/ORACLE CLOUD ALWAYS FREE:
+    # If running on an ARM64 system, uncomment the line below to use Azure SQL Edge:
+    # image: mcr.microsoft.com/azure-sql-edge:latest
+    ports:
+      - "1433:1433"
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "YourPassword@123!"
+    volumes:
+      - sqlserver-data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'YourPassword@123!' -Q 'SELECT 1' -C || /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P 'YourPassword@123!' -Q 'SELECT 1'"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  messaging:
+    image: rabbitmq:3-management
+    container_name: messaging
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: "guest"
+      RABBITMQ_DEFAULT_PASS: "guest"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  menu-service:
+    image: restopulse-menu-service
+    build:
+      context: .
+      dockerfile: Services/MenuService/Dockerfile
+    container_name: menu-service
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_HTTP_PORTS: 8080
+      ConnectionStrings__menudb: "Server=sqlserver;Database=menudb;User ID=sa;Password=YourPassword@123!;TrustServerCertificate=True"
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+
+  table-service:
+    image: restopulse-table-service
+    build:
+      context: .
+      dockerfile: Services/TableService/Dockerfile
+    container_name: table-service
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_HTTP_PORTS: 8080
+      ConnectionStrings__tabledb: "Server=sqlserver;Database=tabledb;User ID=sa;Password=YourPassword@123!;TrustServerCertificate=True"
+      ConnectionStrings__messaging: "amqp://guest:guest@messaging:5672"
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      messaging:
+        condition: service_healthy
+
+  order-service:
+    image: restopulse-order-service
+    build:
+      context: .
+      dockerfile: Services/OrderService/Dockerfile
+    container_name: order-service
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_HTTP_PORTS: 8080
+      ConnectionStrings__orderdb: "Server=sqlserver;Database=orderdb;User ID=sa;Password=YourPassword@123!;TrustServerCertificate=True"
+      ConnectionStrings__messaging: "amqp://guest:guest@messaging:5672"
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      messaging:
+        condition: service_healthy
+
+  kitchen-service:
+    image: restopulse-kitchen-service
+    build:
+      context: .
+      dockerfile: Services/KitchenService/Dockerfile
+    container_name: kitchen-service
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_HTTP_PORTS: 8080
+      ConnectionStrings__kitchendb: "Server=sqlserver;Database=kitchendb;User ID=sa;Password=YourPassword@123!;TrustServerCertificate=True"
+      ConnectionStrings__messaging: "amqp://guest:guest@messaging:5672"
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      messaging:
+        condition: service_healthy
+
+  billing-service:
+    image: restopulse-billing-service
+    build:
+      context: .
+      dockerfile: Services/BillingService/Dockerfile
+    container_name: billing-service
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_HTTP_PORTS: 8080
+      ConnectionStrings__billingdb: "Server=sqlserver;Database=billingdb;User ID=sa;Password=YourPassword@123!;TrustServerCertificate=True"
+      ConnectionStrings__messaging: "amqp://guest:guest@messaging:5672"
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      messaging:
+        condition: service_healthy
+
+  inventory-service:
+    image: restopulse-inventory-service
+    build:
+      context: .
+      dockerfile: Services/InventoryService/Dockerfile
+    container_name: inventory-service
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_HTTP_PORTS: 8080
+      ConnectionStrings__inventorydb: "Server=sqlserver;Database=inventorydb;User ID=sa;Password=YourPassword@123!;TrustServerCertificate=True"
+      ConnectionStrings__messaging: "amqp://guest:guest@messaging:5672"
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      messaging:
+        condition: service_healthy
+
+  report-service:
+    image: restopulse-report-service
+    build:
+      context: .
+      dockerfile: Services/ReportService/Dockerfile
+    container_name: report-service
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_HTTP_PORTS: 8080
+      ConnectionStrings__reportdb: "Server=sqlserver;Database=reportdb;User ID=sa;Password=YourPassword@123!;TrustServerCertificate=True"
+      ConnectionStrings__messaging: "amqp://guest:guest@messaging:5672"
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      messaging:
+        condition: service_healthy
+
+  user-service:
+    image: restopulse-user-service
+    build:
+      context: .
+      dockerfile: Services/UserService/Dockerfile
+    container_name: user-service
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_HTTP_PORTS: 8080
+      ConnectionStrings__userdb: "Server=sqlserver;Database=userdb;User ID=sa;Password=YourPassword@123!;TrustServerCertificate=True"
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+
+  gateway-service:
+    image: restopulse-gateway-service
+    build:
+      context: .
+      dockerfile: Services/GatewayService/Dockerfile
+    container_name: gateway-service
+    ports:
+      - "8080:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_HTTP_PORTS: 8080
+      # Configuration-based service discovery configuration for YARP
+      services__menu-service__http__0: "http://menu-service:8080"
+      services__table-service__http__0: "http://table-service:8080"
+      services__order-service__http__0: "http://order-service:8080"
+      services__kitchen-service__http__0: "http://kitchen-service:8080"
+      services__billing-service__http__0: "http://billing-service:8080"
+      services__inventory-service__http__0: "http://inventory-service:8080"
+      services__report-service__http__0: "http://report-service:8080"
+      services__user-service__http__0: "http://user-service:8080"
+    depends_on:
+      - menu-service
+      - table-service
+      - order-service
+      - kitchen-service
+      - billing-service
+      - inventory-service
+      - report-service
+      - user-service
+
+volumes:
+  sqlserver-data:

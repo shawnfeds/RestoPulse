@@ -30,6 +30,9 @@
   <Folder Name="/Services/TableService/">
     <Project Path="Services/TableService/RestoPulse.TableService.csproj" />
   </Folder>
+  <Folder Name="/Services/UserService/">
+    <Project Path="Services/UserService/RestoPulse.UserService.csproj" />
+  </Folder>
   <Folder Name="/Shared/" />
   <Folder Name="/Shared/Contracts/">
     <Project Path="Shared/Contracts/RestoPulse.Contracts.csproj" />

@@ -94,16 +94,27 @@ const API = {
   // Reports
   reportsRevenue:     (q)    => API.get(`/reports/revenue?${new URLSearchParams(q)}`),
   reportsTopItems:    (q)    => API.get(`/reports/top-items?${new URLSearchParams(q)}`),
+  usersList:          ()     => API.get('/users'),
+  userCreate:         (body) => API.post('/users', body),
 };
 
 /* ── Global State ────────────────────────────────────────── */
 const State = {
-  // Do not default to a fake token; keep null when not authenticated
   token:        localStorage.getItem('rp_token') || null,
+  role:         localStorage.getItem('rp_role') || null,
+  fullName:     localStorage.getItem('rp_fullname') || null,
+  username:     localStorage.getItem('rp_username') || null,
   currentPage:  'dashboard',
-  outlet:       { name: 'The Grand Table', role: 'Manager' },
+  outlet:       { name: 'The Grand Table' },
   orderBadge:   0,
   kitchenBadge: 0,
+};
+
+const RolePages = {
+  Owner:   ['dashboard', 'tables', 'orders', 'kitchen', 'billing', 'menu', 'inventory', 'users', 'reports'],
+  Manager: ['dashboard', 'tables', 'orders', 'kitchen', 'billing', 'menu', 'inventory', 'users', 'reports'],
+  Chef:    ['kitchen', 'menu', 'inventory'],
+  Server:  ['tables', 'orders', 'billing']
 };
 
 /* ── Toast ───────────────────────────────────────────────── */
@@ -130,6 +141,22 @@ const Router = {
   },
 
   navigate(id) {
+    if (!State.token) {
+      document.getElementById('login-overlay').style.display = 'flex';
+      return;
+    }
+
+    const allowedPages = RolePages[State.role] || [];
+    if (!allowedPages.includes(id)) {
+      if (allowedPages.length > 0) {
+        Router.navigate(allowedPages[0]);
+      }
+      return;
+    }
+
+    // Close sidebar drawer if open on mobile
+    document.body.classList.remove('sidebar-open');
+
     // Hide all pages
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -150,6 +177,7 @@ const Router = {
       billing:    { title: 'Billing & Invoices', sub: 'Settlements & receipts' },
       menu:       { title: 'Menu Manager',     sub: 'Items, categories & pricing' },
       inventory:  { title: 'Inventory',        sub: 'Stock levels & adjustments' },
+      users:      { title: 'User Management',  sub: 'Manage roles and credentials' },
       reports:    { title: 'Reports',          sub: 'Revenue & analytics' },
     };
     const t = titles[id] || { title: id, sub: '' };
@@ -207,6 +235,68 @@ function updateBadge(nav, count) {
   } else if (badge) badge.remove();
 }
 
+/* ── RBAC / UI Toggles ───────────────────────────────────── */
+function initUserView() {
+  if (!State.token) {
+    document.getElementById('login-overlay').style.display = 'flex';
+    return;
+  }
+  
+  document.getElementById('login-overlay').style.display = 'none';
+
+  const nameEl = document.getElementById('user-fullname');
+  const roleEl = document.getElementById('user-role');
+  const avatarEl = document.getElementById('user-avatar');
+  const topbarAvatarEl = document.getElementById('topbar-avatar');
+
+  if (nameEl) nameEl.textContent = State.fullName || 'User';
+  if (roleEl) roleEl.textContent = State.role || 'Role';
+  if (avatarEl) {
+    avatarEl.textContent = (State.fullName || 'U').substring(0, 1).toUpperCase();
+  }
+  if (topbarAvatarEl) {
+    topbarAvatarEl.textContent = (State.fullName || 'U').substring(0, 1).toUpperCase();
+  }
+
+  const allowedPages = RolePages[State.role] || [];
+  document.querySelectorAll('.nav-item[data-page]').forEach(el => {
+    const pageId = el.dataset.page;
+    if (allowedPages.includes(pageId)) {
+      el.style.display = 'flex';
+    } else {
+      el.style.display = 'none';
+    }
+  });
+
+  // Handle section labels: if all items under a label are hidden, hide the label
+  const overviewLabel = document.querySelector('.nav-section-label:nth-of-type(1)');
+  const overviewItems = ['dashboard'];
+  toggleSectionLabel(overviewLabel, overviewItems, allowedPages);
+
+  const opsLabel = document.querySelector('.nav-section-label:nth-of-type(2)');
+  const opsItems = ['tables', 'orders', 'kitchen', 'billing'];
+  toggleSectionLabel(opsLabel, opsItems, allowedPages);
+
+  const mgmtLabel = document.querySelector('.nav-section-label:nth-of-type(3)');
+  const mgmtItems = ['menu', 'inventory', 'users', 'reports'];
+  toggleSectionLabel(mgmtLabel, mgmtItems, allowedPages);
+
+  // Navigate to current or first allowed page
+  if (allowedPages.length > 0) {
+    if (allowedPages.includes(State.currentPage)) {
+      Router.navigate(State.currentPage);
+    } else {
+      Router.navigate(allowedPages[0]);
+    }
+  }
+}
+
+function toggleSectionLabel(labelEl, items, allowedPages) {
+  if (!labelEl) return;
+  const anyVisible = items.some(item => allowedPages.includes(item));
+  labelEl.style.display = anyVisible ? 'block' : 'none';
+}
+
 /* ── Init ────────────────────────────────────────────────── */
 document.addEventListener('DOMContentLoaded', () => {
   // Wire nav clicks
@@ -214,6 +304,82 @@ document.addEventListener('DOMContentLoaded', () => {
     el.addEventListener('click', () => Router.navigate(el.dataset.page));
   });
 
-  // Boot to dashboard
-  Router.navigate('dashboard');
+  // Wire sidebar mobile toggles
+  const toggleBtn = document.getElementById('sidebar-toggle');
+  const overlay = document.getElementById('sidebar-overlay');
+  
+  if (toggleBtn) {
+    toggleBtn.addEventListener('click', () => {
+      document.body.classList.toggle('sidebar-open');
+    });
+  }
+  
+  if (overlay) {
+    overlay.addEventListener('click', () => {
+      document.body.classList.remove('sidebar-open');
+    });
+  }
+
+  // Wire Login Form
+  const loginForm = document.getElementById('login-form');
+  if (loginForm) {
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const usernameInput = document.getElementById('login-username');
+      const passwordInput = document.getElementById('login-password');
+      const username = usernameInput.value.trim();
+      const password = passwordInput.value;
+
+      try {
+        const response = await API.post('/users/login', { username, password });
+        if (response && response.token) {
+          State.token = response.token;
+          State.role = response.role;
+          State.fullName = response.fullName;
+          State.username = response.username;
+
+          localStorage.setItem('rp_token', response.token);
+          localStorage.setItem('rp_role', response.role);
+          localStorage.setItem('rp_fullname', response.fullName);
+          localStorage.setItem('rp_username', response.username);
+
+          usernameInput.value = '';
+          passwordInput.value = '';
+
+          initUserView();
+          Toast.success(`Welcome back, ${response.fullName}!`);
+        } else {
+          Toast.error('Invalid server response');
+        }
+      } catch (err) {
+        Toast.error('Login failed. Please check your credentials.');
+      }
+    });
+  }
+
+  // Wire Logout Button
+  const logoutBtn = document.getElementById('btn-logout');
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', () => {
+      State.token = null;
+      State.role = null;
+      State.fullName = null;
+      State.username = null;
+
+      localStorage.removeItem('rp_token');
+      localStorage.removeItem('rp_role');
+      localStorage.removeItem('rp_fullname');
+      localStorage.removeItem('rp_username');
+
+      document.getElementById('login-overlay').style.display = 'flex';
+      Toast.info('Signed out successfully.');
+    });
+  }
+
+  // Boot UI
+  if (State.token) {
+    initUserView();
+  } else {
+    document.getElementById('login-overlay').style.display = 'flex';
+  }
 });

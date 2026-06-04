@@ -11,7 +11,34 @@
 </head>
 <body>
 
+<!-- ══════════════════════════════════════════
+     LOGIN OVERLAY
+══════════════════════════════════════════ -->
+<div id="login-overlay" style="display: flex;">
+  <div class="login-card">
+    <div class="login-brand">
+      <div class="logo-mark">R</div>
+      <div class="logo-text">Resto<span>Pulse</span></div>
+    </div>
+    <h2 class="login-title">Sign In</h2>
+    <p class="login-subtitle">Enter your credentials to access the workspace</p>
+    <form id="login-form">
+      <div class="form-group">
+        <label for="login-username">Username</label>
+        <input type="text" id="login-username" required placeholder="e.g. owner, manager, chef, server">
+      </div>
+      <div class="form-group">
+        <label for="login-password">Password</label>
+        <input type="password" id="login-password" required placeholder="••••••••">
+      </div>
+      <button type="submit" class="btn btn-primary btn-block">Sign In</button>
+    </form>
+  </div>
+</div>
+
 <div id="app">
+
+  <div id="sidebar-overlay"></div>
 
   <!-- ══════════════════════════════════════════
        SIDEBAR
@@ -26,44 +53,50 @@
     <div class="sidebar-nav">
 
       <div class="nav-section-label">Overview</div>
-      <div class="nav-item active" data-page="dashboard">
+      <div class="nav-item active" data-page="dashboard" id="nav-dashboard">
         <span class="nav-icon">⊞</span> Dashboard
       </div>
 
       <div class="nav-section-label">Operations</div>
-      <div class="nav-item" data-page="tables">
+      <div class="nav-item" data-page="tables" id="nav-tables">
         <span class="nav-icon">🪑</span> Tables
       </div>
-      <div class="nav-item" data-page="orders">
+      <div class="nav-item" data-page="orders" id="nav-orders">
         <span class="nav-icon">🧾</span> Orders
       </div>
-      <div class="nav-item" data-page="kitchen">
+      <div class="nav-item" data-page="kitchen" id="nav-kitchen">
         <span class="nav-icon">🍳</span> Kitchen
       </div>
-      <div class="nav-item" data-page="billing">
+      <div class="nav-item" data-page="billing" id="nav-billing">
         <span class="nav-icon">💳</span> Billing
       </div>
 
       <div class="nav-section-label">Management</div>
-      <div class="nav-item" data-page="menu">
+      <div class="nav-item" data-page="menu" id="nav-menu">
         <span class="nav-icon">📋</span> Menu
       </div>
-      <div class="nav-item" data-page="inventory">
+      <div class="nav-item" data-page="inventory" id="nav-inventory">
         <span class="nav-icon">📦</span> Inventory
       </div>
-      <div class="nav-item" data-page="reports">
+      <div class="nav-item" data-page="users" id="nav-users">
+        <span class="nav-icon">👤</span> Users
+      </div>
+      <div class="nav-item" data-page="reports" id="nav-reports">
         <span class="nav-icon">📊</span> Reports
       </div>
 
     </div>
 
     <div class="sidebar-footer">
-      <div class="outlet-info">
-        <div class="outlet-avatar">🏠</div>
-        <div>
-          <div class="outlet-name">The Grand Table</div>
-          <div class="outlet-role">Manager</div>
+      <div class="outlet-info" id="user-profile-info" style="width: 100%; display: flex; align-items: center; justify-content: space-between;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div class="outlet-avatar" id="user-avatar" style="width: 32px; height: 32px; font-size: 14px;">👤</div>
+          <div>
+            <div class="outlet-name" id="user-fullname" style="font-weight: 500;">Admin Owner</div>
+            <div class="outlet-role" id="user-role" style="font-size: 11px;">Owner</div>
+          </div>
         </div>
+        <button class="btn btn-ghost btn-icon" id="btn-logout" title="Sign Out" style="background: none; border: none; font-size: 16px; cursor: pointer; color: var(--text-muted); opacity: 0.7;">❌</button>
       </div>
     </div>
 
@@ -76,6 +109,7 @@
 
     <!-- Topbar -->
     <div id="topbar">
+      <button class="btn btn-ghost btn-icon" id="sidebar-toggle" title="Menu" style="margin-right: 8px;">☰</button>
       <div>
         <div class="topbar-title" id="topbar-title">Dashboard</div>
         <div class="topbar-subtitle" id="topbar-sub">Live overview</div>
@@ -87,7 +121,7 @@
         </div>
         <div style="font-size:12px;color:var(--text-muted)" id="topbar-clock"></div>
         <button class="btn btn-ghost btn-icon" title="Notifications">🔔</button>
-        <div style="width:32px;height:32px;background:var(--rp-brand-soft);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--rp-brand);font-weight:600;border:1px solid var(--rp-brand-glow)">M</div>
+        <div id="topbar-avatar" style="width:32px;height:32px;background:var(--rp-brand-soft);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--rp-brand);font-weight:600;border:1px solid var(--rp-brand-glow)">M</div>
       </div>
     </div>
 
@@ -101,6 +135,7 @@
       <div class="page" id="page-billing"></div>
       <div class="page" id="page-menu"></div>
       <div class="page" id="page-inventory"></div>
+      <div class="page" id="page-users"></div>
       <div class="page" id="page-reports"></div>
 
     </div>
@@ -120,6 +155,7 @@
 <script src="components/modules/kitchen.js"></script>
 <script src="components/modules/billing.js"></script>
 <script src="components/modules/menu-inventory-reports.js"></script>
+<script src="components/modules/users.js"></script>
 
 <script>
   // Live clock

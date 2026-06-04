@@ -8,11 +8,9 @@
 
   <ItemGroup>
     <PackageReference Include="FluentValidation.AspNetCore" Version="11.3.1" />
-    <PackageReference Include="MassTransit" Version="8.3.6" />
-    <PackageReference Include="MassTransit.RabbitMQ" Version="8.3.6" />
+    <PackageReference Include="Isopoh.Cryptography.Argon2" Version="2.0.0" />
     <PackageReference Include="MediatR" Version="14.1.0" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.8" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.8" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.8">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
@@ -23,12 +21,16 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\ServiceDefaults\RestoPulse.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\..\Shared\Contracts\RestoPulse.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Api\Validators\" />
-    <Folder Include="Application\Mappings\" />
-    <Folder Include="Infrastructure\Messaging\" />
+    <Folder Include="Api\Endpoints\" />
+    <Folder Include="Application\Commands\" />
+    <Folder Include="Application\Queries\" />
+    <Folder Include="Contracts\" />
+    <Folder Include="Domains\Entities\" />
+    <Folder Include="Domains\Enums\" />
     <Folder Include="Infrastructure\Persistence\Migrations\" />
   </ItemGroup>
 

@@ -468,3 +468,286 @@ html, body {
 }
 .empty-state .empty-icon { font-size: 36px; opacity: 0.3; }
 .empty-state p { font-size: 13px; }
+
+/* ── Responsive Styling (Mobile & Tablet) ─────────────────── */
+
+#sidebar-toggle {
+  display: none !important;
+}
+
+#sidebar-overlay {
+  display: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+/* Card-body overflow handles large table scrolling on mobile */
+.card-body {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── Tablet Breakpoint ────────────────────────────────────── */
+@media (max-width: 1024px) {
+  :root {
+    --sidebar-w: 200px;
+  }
+  
+  .scroll-area {
+    padding: 16px 20px;
+  }
+  
+  .grid-3 {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  
+  .grid-4 {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+/* ── Mobile Breakpoint ────────────────────────────────────── */
+@media (max-width: 768px) {
+  #sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    width: 240px !important;
+    transform: translateX(-100%) !important;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    z-index: 1000 !important;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.6) !important;
+  }
+  
+  #sidebar-toggle {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    font-size: 18px;
+    border-radius: var(--radius-md);
+  }
+  
+  /* Show hamburger toggle when sidebar drawer exists */
+  body.sidebar-open #sidebar {
+    transform: translateX(0) !important;
+  }
+  
+  body.sidebar-open #sidebar-overlay {
+    display: block !important;
+    position: fixed !important;
+    inset: 0 !important;
+    background: rgba(13, 14, 17, 0.7) !important;
+    backdrop-filter: blur(4px) !important;
+    z-index: 990 !important;
+    opacity: 1;
+  }
+
+  #main {
+    width: 100%;
+  }
+
+  #topbar {
+    padding: 0 16px !important;
+    gap: 8px;
+  }
+  
+  .scroll-area {
+    padding: 14px 16px !important;
+  }
+  
+  /* Stacking all grids */
+  .grid-2, .grid-3, .grid-4 {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+  
+  .stat-value {
+    font-size: 22px !important;
+  }
+  
+  .modal-backdrop {
+    padding: 12px !important;
+  }
+  
+  /* Flex wrap items that would squeeze on narrow screens */
+  .card-header {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+}
+
+/* ── Extra Small Mobile Breakpoint ────────────────────────── */
+@media (max-width: 576px) {
+  #topbar-clock, 
+  .topbar-subtitle {
+    display: none !important;
+  }
+  
+  #topbar div:first-of-type {
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .topbar-title {
+    font-size: 15px !important;
+  }
+  
+  /* Compress action elements on the topbar right */
+  #topbar div[style*="margin-left:auto"] {
+    gap: 6px !important;
+  }
+  
+  #topbar div[style*="live-dot"] {
+    display: none !important;
+  }
+}
+
+/* ==========================================
+   LOGIN OVERLAY & SLEEK CARD
+   ========================================== */
+#login-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: radial-gradient(circle at center, rgba(18, 18, 20, 0.96) 0%, rgba(10, 10, 12, 0.99) 100%);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 99999;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 400px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 40px;
+  box-shadow: 0 24px 64px -16px rgba(0, 0, 0, 0.7), 
+              0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  animation: loginCardAppear 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes loginCardAppear {
+  0% {
+    opacity: 0;
+    transform: translateY(15px) scale(0.97);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.login-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background: linear-gradient(90deg, var(--rp-brand) 0%, #ff6b6b 100%);
+}
+
+.login-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.login-brand .logo-mark {
+  width: 36px;
+  height: 36px;
+  background: linear-gradient(135deg, var(--rp-brand) 0%, #ff6b6b 100%);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 700;
+  font-size: 18px;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
+.login-brand .logo-text {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text-main);
+  letter-spacing: -0.5px;
+}
+
+.login-brand .logo-text span {
+  color: var(--rp-brand);
+}
+
+.login-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-main);
+  text-align: center;
+  margin: 0 0 6px 0;
+}
+
+.login-subtitle {
+  font-size: 13px;
+  color: var(--text-muted);
+  text-align: center;
+  margin: 0 0 28px 0;
+  line-height: 1.5;
+}
+
+.login-card .form-group {
+  margin-bottom: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.login-card label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.login-card input {
+  width: 100%;
+  padding: 12px 14px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  color: var(--text-main);
+  font-family: inherit;
+  font-size: 14px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.login-card input:focus {
+  border-color: var(--rp-brand);
+  outline: none;
+  background: var(--bg-card);
+}
+
+.btn-block {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+}
