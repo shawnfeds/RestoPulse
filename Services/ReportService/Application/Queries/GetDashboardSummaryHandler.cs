@@ -63,119 +63,16 @@ public class GetDashboardSummaryHandler(ReportDbContext db, IHttpClientFactory h
                 ))
                 .ToList();
 
-            // ── Tables occupancy (via HTTP call to TableService) ───────────────────────
-            var tablesOccupied = 12;
-            var totalTables = 24;
-            try
-            {
-                using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-                cts.CancelAfter(TimeSpan.FromSeconds(5));
-                // Try HTTPS first (Aspire default), fallback to HTTP
-                var urls = new[] { "https://tableservice/api/tables", "http://tableservice/api/tables" };
-                HttpResponseMessage tablesResponse = null;
-                foreach (var url in urls)
-                {
-                    try
-                    {
-                        tablesResponse = await _http.GetAsync(url, cts.Token);
-                        if (tablesResponse.IsSuccessStatusCode) break;
-                    }
-                    catch { /* try next */ }
-                }
+            // ── Fetch operational data from external services in parallel ──────────────
+            var tablesTask = GetTablesOccupiedAsync(_http, ct, logger);
+            var kitchenTask = GetPendingKitchenAsync(_http, ct, logger);
+            var inventoryTask = GetLowStockAlertsAsync(_http, ct, logger);
 
-                if (tablesResponse?.IsSuccessStatusCode == true)
-                {
-                    var content = await tablesResponse.Content.ReadAsStringAsync(cts.Token);
-                    using var doc = JsonDocument.Parse(content);
-                    var root = doc.RootElement;
+            await Task.WhenAll(tablesTask, kitchenTask, inventoryTask);
 
-                    var tablesArray = root.ValueKind == JsonValueKind.Array 
-                        ? root 
-                        : (root.TryGetProperty("data", out var data) ? data : root);
-
-                    totalTables = tablesArray.GetArrayLength();
-                    tablesOccupied = tablesArray
-                        .EnumerateArray()
-                        .Count(t => t.TryGetProperty("status", out var status) && 
-                                    status.GetString() == "Occupied");
-                }
-            }
-            catch (Exception ex)
-            {
-                logger.LogWarning("Failed to fetch tables: {Error}", ex.Message);
-            }
-
-            // ── Kitchen pending items (via HTTP call to KitchenService) ─────────────────
-            var pendingKitchen = 0;
-            try
-            {
-                using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-                cts.CancelAfter(TimeSpan.FromSeconds(5));
-                var urls = new[] { "https://kitchenservice/api/kitchen/queue", "http://kitchenservice/api/kitchen/queue" };
-                HttpResponseMessage kitchenResponse = null;
-                foreach (var url in urls)
-                {
-                    try
-                    {
-                        kitchenResponse = await _http.GetAsync(url, cts.Token);
-                        if (kitchenResponse.IsSuccessStatusCode) break;
-                    }
-                    catch { /* try next */ }
-                }
-
-                if (kitchenResponse?.IsSuccessStatusCode == true)
-                {
-                    var content = await kitchenResponse.Content.ReadAsStringAsync(cts.Token);
-                    using var doc = JsonDocument.Parse(content);
-                    var root = doc.RootElement;
-
-                    var ticketsArray = root.ValueKind == JsonValueKind.Array 
-                        ? root 
-                        : (root.TryGetProperty("data", out var data) ? data : root);
-
-                    pendingKitchen = ticketsArray.GetArrayLength();
-                }
-            }
-            catch (Exception ex)
-            {
-                logger.LogWarning("Failed to fetch kitchen queue: {Error}", ex.Message);
-            }
-
-            // ── Low stock alerts (via HTTP call to InventoryService) ──────────────────
-            var lowStockAlerts = 0;
-            try
-            {
-                using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-                cts.CancelAfter(TimeSpan.FromSeconds(5));
-                var urls = new[] { "https://inventoryservice/api/inventory/low-stock", "http://inventoryservice/api/inventory/low-stock" };
-                HttpResponseMessage inventoryResponse = null;
-                foreach (var url in urls)
-                {
-                    try
-                    {
-                        inventoryResponse = await _http.GetAsync(url, cts.Token);
-                        if (inventoryResponse.IsSuccessStatusCode) break;
-                    }
-                    catch { /* try next */ }
-                }
-
-                if (inventoryResponse?.IsSuccessStatusCode == true)
-                {
-                    var content = await inventoryResponse.Content.ReadAsStringAsync(cts.Token);
-                    using var doc = JsonDocument.Parse(content);
-                    var root = doc.RootElement;
-
-                    var alertsArray = root.ValueKind == JsonValueKind.Array 
-                        ? root 
-                        : (root.TryGetProperty("data", out var data) ? data : root);
-
-                    lowStockAlerts = alertsArray.GetArrayLength();
-                }
-            }
-            catch (Exception ex)
-            {
-                logger.LogWarning("Failed to fetch low stock: {Error}", ex.Message);
-            }
+            var (tablesOccupied, totalTables) = await tablesTask;
+            var pendingKitchen = await kitchenTask;
+            var lowStockAlerts = await inventoryTask;
 
             // ── Calculate trend changes (compare to yesterday) ─────────────────────────
             var yesterday = today.AddDays(-1);
@@ -215,5 +112,124 @@ public class GetDashboardSummaryHandler(ReportDbContext db, IHttpClientFactory h
             logger.LogError(ex, "Unhandled error in GetDashboardSummaryHandler");
             throw;
         }
+    }
+
+    private async Task<(int Occupied, int Total)> GetTablesOccupiedAsync(HttpClient http, CancellationToken ct, ILogger logger)
+    {
+        try
+        {
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            cts.CancelAfter(TimeSpan.FromSeconds(3));
+            var urls = new[] { "https://tableservice/api/tables", "http://tableservice/api/tables" };
+            HttpResponseMessage tablesResponse = null;
+            foreach (var url in urls)
+            {
+                try
+                {
+                    tablesResponse = await http.GetAsync(url, cts.Token);
+                    if (tablesResponse.IsSuccessStatusCode) break;
+                }
+                catch { }
+            }
+
+            if (tablesResponse?.IsSuccessStatusCode == true)
+            {
+                var content = await tablesResponse.Content.ReadAsStringAsync(cts.Token);
+                using var doc = JsonDocument.Parse(content);
+                var root = doc.RootElement;
+
+                var tablesArray = root.ValueKind == JsonValueKind.Array 
+                    ? root 
+                    : (root.TryGetProperty("data", out var data) ? data : root);
+
+                int total = tablesArray.GetArrayLength();
+                int occupied = tablesArray
+                    .EnumerateArray()
+                    .Count(t => t.TryGetProperty("status", out var status) && 
+                                status.GetString() == "Occupied");
+                return (occupied, total);
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning("Failed to fetch tables: {Error}", ex.Message);
+        }
+        return (12, 24);
+    }
+
+    private async Task<int> GetPendingKitchenAsync(HttpClient http, CancellationToken ct, ILogger logger)
+    {
+        try
+        {
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            cts.CancelAfter(TimeSpan.FromSeconds(3));
+            var urls = new[] { "https://kitchenservice/api/kitchen/queue", "http://kitchenservice/api/kitchen/queue" };
+            HttpResponseMessage kitchenResponse = null;
+            foreach (var url in urls)
+            {
+                try
+                {
+                    kitchenResponse = await http.GetAsync(url, cts.Token);
+                    if (kitchenResponse.IsSuccessStatusCode) break;
+                }
+                catch { }
+            }
+
+            if (kitchenResponse?.IsSuccessStatusCode == true)
+            {
+                var content = await kitchenResponse.Content.ReadAsStringAsync(cts.Token);
+                using var doc = JsonDocument.Parse(content);
+                var root = doc.RootElement;
+
+                var ticketsArray = root.ValueKind == JsonValueKind.Array 
+                    ? root 
+                    : (root.TryGetProperty("data", out var data) ? data : root);
+
+                return ticketsArray.GetArrayLength();
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning("Failed to fetch kitchen queue: {Error}", ex.Message);
+        }
+        return 0;
+    }
+
+    private async Task<int> GetLowStockAlertsAsync(HttpClient http, CancellationToken ct, ILogger logger)
+    {
+        try
+        {
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            cts.CancelAfter(TimeSpan.FromSeconds(3));
+            var urls = new[] { "https://inventoryservice/api/inventory/low-stock", "http://inventoryservice/api/inventory/low-stock" };
+            HttpResponseMessage inventoryResponse = null;
+            foreach (var url in urls)
+            {
+                try
+                {
+                    inventoryResponse = await http.GetAsync(url, cts.Token);
+                    if (inventoryResponse.IsSuccessStatusCode) break;
+                }
+                catch { }
+            }
+
+            if (inventoryResponse?.IsSuccessStatusCode == true)
+            {
+                var content = await inventoryResponse.Content.ReadAsStringAsync(cts.Token);
+                using var doc = JsonDocument.Parse(content);
+                var root = doc.RootElement;
+
+                var alertsArray = root.ValueKind == JsonValueKind.Array 
+                    ? root 
+                    : (root.TryGetProperty("data", out var data) ? data : root);
+
+                return alertsArray.GetArrayLength();
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning("Failed to fetch low stock: {Error}", ex.Message);
+        }
+        return 0;
     }
 }
