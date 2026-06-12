@@ -11,7 +11,9 @@
 </head>
 <body>
 
-<div id="app">
+<div id="sidebar-overlay" class="sidebar-overlay" onclick="toggleMobileSidebar()"></div>
+
+<div id="app" style="display: none;">
 
   <!-- ══════════════════════════════════════════
        SIDEBAR
@@ -25,45 +27,69 @@
 
     <div class="sidebar-nav">
 
-      <div class="nav-section-label">Overview</div>
-      <div class="nav-item active" data-page="dashboard">
+      <div class="nav-section-label" id="lbl-overview">Overview</div>
+      <div class="nav-item" data-page="dashboard" id="nav-dashboard">
         <span class="nav-icon">⊞</span> Dashboard
       </div>
 
-      <div class="nav-section-label">Operations</div>
-      <div class="nav-item" data-page="tables">
+      <div class="nav-section-label" id="lbl-operations">Operations</div>
+      <div class="nav-item" data-page="tables" id="nav-tables">
         <span class="nav-icon">🪑</span> Tables
       </div>
-      <div class="nav-item" data-page="orders">
+      <div class="nav-item" data-page="orders" id="nav-orders">
         <span class="nav-icon">🧾</span> Orders
       </div>
-      <div class="nav-item" data-page="kitchen">
+      <div class="nav-item" data-page="kitchen" id="nav-kitchen">
         <span class="nav-icon">🍳</span> Kitchen
       </div>
-      <div class="nav-item" data-page="billing">
+      <div class="nav-item" data-page="billing" id="nav-billing">
         <span class="nav-icon">💳</span> Billing
       </div>
 
-      <div class="nav-section-label">Management</div>
-      <div class="nav-item" data-page="menu">
+      <div class="nav-section-label" id="lbl-management">Management</div>
+      <div class="nav-item" data-page="menu" id="nav-menu">
         <span class="nav-icon">📋</span> Menu
       </div>
-      <div class="nav-item" data-page="inventory">
+      <div class="nav-item" data-page="inventory" id="nav-inventory">
         <span class="nav-icon">📦</span> Inventory
       </div>
-      <div class="nav-item" data-page="reports">
+      <div class="nav-item" data-page="reports" id="nav-reports">
         <span class="nav-icon">📊</span> Reports
+      </div>
+
+      <div class="nav-section-label" id="lbl-staff">Staff</div>
+      <div class="nav-item" data-page="users" id="nav-users">
+        <span class="nav-icon">👥</span> Users & Shifts
+      </div>
+      <div class="divider" style="margin: 12px 10px; border-top: 1px solid var(--border-subtle)"></div>
+      <div class="nav-item danger-nav" onclick="handleLogout(event)">
+        <span class="nav-icon" style="color: var(--red);">🚪</span>
+        <span style="color: var(--red);">Log Out</span>
       </div>
 
     </div>
 
-    <div class="sidebar-footer">
+    <div class="sidebar-footer" id="profile-footer" onclick="toggleProfileMenu(event)">
       <div class="outlet-info">
-        <div class="outlet-avatar">🏠</div>
-        <div>
-          <div class="outlet-name">The Grand Table</div>
-          <div class="outlet-role">Manager</div>
+        <div class="outlet-avatar" id="footer-avatar">👤</div>
+        <div style="flex:1; min-width:0;">
+          <div class="outlet-name" id="footer-username">Loading...</div>
+          <div class="outlet-role" id="footer-role">Role</div>
         </div>
+        <span style="font-size:8px;color:var(--text-muted)">▲</span>
+      </div>
+      
+      <!-- Profile Dropdown Menu -->
+      <div id="profile-dropdown" class="profile-dropdown">
+        <div class="dropdown-header">
+          <div id="dropdown-fullname">Staff Name</div>
+          <div id="dropdown-clock-status" class="clock-status-badge">Clocked Out</div>
+        </div>
+        <div class="divider" style="margin:6px 0"></div>
+        <button class="dropdown-item" id="btn-clock-in" onclick="handleClockInOutBtn(event)">⏱ Clock In</button>
+        <button class="dropdown-item" onclick="openChangePasswordModal(event)">🔑 Password</button>
+        <div class="divider" style="margin:6px 0"></div>
+        <button class="dropdown-item danger" onclick="handleLogout(event)">🚪 Log Out</button>
       </div>
     </div>
 
@@ -76,25 +102,39 @@
 
     <!-- Topbar -->
     <div id="topbar">
+      <button id="mobile-menu-toggle" class="btn btn-ghost btn-icon" style="display:none;" onclick="toggleMobileSidebar()">☰</button>
       <div>
         <div class="topbar-title" id="topbar-title">Dashboard</div>
         <div class="topbar-subtitle" id="topbar-sub">Live overview</div>
       </div>
       <div style="margin-left:auto;display:flex;align-items:center;gap:10px">
-        <div style="display:flex;align-items:center;gap:6px;padding:5px 10px;background:var(--bg-raised);border-radius:var(--radius-md);border:1px solid var(--border-subtle)">
+        <div id="live-indicator-container" style="display:flex;align-items:center;gap:6px;padding:5px 10px;background:var(--bg-raised);border-radius:var(--radius-md);border:1px solid var(--border-subtle)">
           <span class="live-dot"></span>
           <span style="font-size:12px;color:var(--text-muted)">Live</span>
         </div>
         <div style="font-size:12px;color:var(--text-muted)" id="topbar-clock"></div>
         <button class="btn btn-ghost btn-icon" title="Notifications">🔔</button>
-        <div style="width:32px;height:32px;background:var(--rp-brand-soft);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--rp-brand);font-weight:600;border:1px solid var(--rp-brand-glow)">M</div>
+        <div class="topbar-profile-container" style="position: relative;">
+          <div id="header-avatar-badge" onclick="toggleTopbarProfileMenu(event)" style="width:32px;height:32px;background:var(--rp-brand-soft);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--rp-brand);font-weight:600;border:1px solid var(--rp-brand-glow);cursor:pointer;" title="Profile Menu">U</div>
+          <!-- Topbar Dropdown Menu -->
+          <div id="topbar-profile-dropdown" class="profile-dropdown topbar-dropdown">
+            <div class="dropdown-header">
+              <div id="topbar-dropdown-fullname" style="font-weight: 500; font-size: 13.5px; color: var(--text-primary);">Staff Name</div>
+              <div id="topbar-dropdown-role" style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">Role</div>
+            </div>
+            <div class="divider" style="margin:6px 0"></div>
+            <button class="dropdown-item" onclick="openChangePasswordModal(event)">🔑 Password</button>
+            <div class="divider" style="margin:6px 0"></div>
+            <button class="dropdown-item danger" onclick="handleLogout(event)">🚪 Log Out</button>
+          </div>
+        </div>
       </div>
     </div>
 
     <!-- Page content -->
     <div id="page-content">
 
-      <div class="page active" id="page-dashboard"></div>
+      <div class="page" id="page-dashboard"></div>
       <div class="page" id="page-tables"></div>
       <div class="page" id="page-orders"></div>
       <div class="page" id="page-kitchen"></div>
@@ -102,8 +142,69 @@
       <div class="page" id="page-menu"></div>
       <div class="page" id="page-inventory"></div>
       <div class="page" id="page-reports"></div>
+      <div class="page" id="page-users"></div>
 
     </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     LOGIN PAGE (Shown when not authenticated)
+══════════════════════════════════════════ -->
+<div id="login-container" class="login-backdrop">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="logo-mark">R</div>
+      <div class="logo-text">Resto<span>Pulse</span></div>
+    </div>
+    <div class="login-title">Welcome Back</div>
+    <div class="login-subtitle">Sign in to manage RestoPulse</div>
+    
+    <form id="login-form" onsubmit="handleLoginSubmit(event)">
+      <div class="form-group mb-3">
+        <label class="form-label" for="login-username">Username</label>
+        <input class="form-input" id="login-username" type="text" placeholder="Enter username" required autocomplete="username">
+      </div>
+      <div class="form-group mb-4">
+        <label class="form-label" for="login-password">Password</label>
+        <input class="form-input" id="login-password" type="password" placeholder="Enter password" required autocomplete="current-password">
+      </div>
+      <button class="btn btn-primary w-full" type="submit" style="justify-content:center; padding:10px; font-weight: 600;">Sign In</button>
+    </form>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     MODALS
+══════════════════════════════════════════ -->
+
+<!-- Change Password Modal -->
+<div class="modal-backdrop" id="modal-change-password">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Change Password</span>
+      <button class="btn btn-ghost btn-icon" onclick="Modal.close('modal-change-password')">✕</button>
+    </div>
+    <form id="change-password-form" onsubmit="submitChangePassword(event)">
+      <div class="modal-body">
+        <div class="form-group mb-3" id="group-current-password">
+          <label class="form-label">Current Password</label>
+          <input class="form-input" id="pwd-current" type="password" placeholder="Enter current password">
+        </div>
+        <div class="form-group mb-3">
+          <label class="form-label">New Password</label>
+          <input class="form-input" id="pwd-new" type="password" placeholder="Enter new password" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Confirm New Password</label>
+          <input class="form-input" id="pwd-confirm" type="password" placeholder="Confirm new password" required>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="Modal.close('modal-change-password')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Update Password</button>
+      </div>
+    </form>
   </div>
 </div>
 
@@ -120,6 +221,7 @@
 <script src="components/modules/kitchen.js"></script>
 <script src="components/modules/billing.js"></script>
 <script src="components/modules/menu-inventory-reports.js"></script>
+<script src="components/modules/users.js"></script>
 
 <script>
   // Live clock
