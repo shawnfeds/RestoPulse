@@ -21,6 +21,9 @@
   <Folder Name="/Services/MenuService/">
     <Project Path="Services/MenuService/RestoPulse.MenuService.csproj" />
   </Folder>
+  <Folder Name="/Services/UserService/">
+    <Project Path="Services/UserService/RestoPulse.UserService.csproj" />
+  </Folder>
   <Folder Name="/Services/OrderService/">
     <Project Path="Services/OrderService/RestoPulse.OrderService.csproj" />
   </Folder>

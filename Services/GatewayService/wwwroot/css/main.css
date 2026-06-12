@@ -468,3 +468,183 @@ html, body {
 }
 .empty-state .empty-icon { font-size: 36px; opacity: 0.3; }
 .empty-state p { font-size: 13px; }
+
+/* ── Login Screen (Premium Glassmorphism) ─────────────────── */
+.login-backdrop {
+  position: fixed; inset: 0;
+  background: radial-gradient(circle at center, #1C1F27 0%, #0D0E11 100%);
+  z-index: 9999;
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.login-card {
+  background: rgba(20, 22, 27, 0.65);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-xl);
+  padding: 32px;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+  animation: loginFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes loginFadeIn {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.login-logo {
+  display: flex; align-items: center; justify-content: center;
+  gap: 10px; margin-bottom: 24px;
+}
+.login-logo .logo-mark {
+  width: 36px; height: 36px;
+  background: var(--rp-brand);
+  border-radius: var(--radius-md);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; font-weight: 700; color: #fff;
+}
+.login-logo .logo-text {
+  font-size: 19px; font-weight: 600; letter-spacing: -0.3px;
+  color: var(--text-primary);
+}
+.login-logo .logo-text span { color: var(--rp-brand); }
+.login-title {
+  text-align: center; font-size: 18px; font-weight: 600;
+  color: var(--text-primary); margin-bottom: 6px;
+}
+.login-subtitle {
+  text-align: center; font-size: 12px; color: var(--text-secondary);
+  margin-bottom: 24px;
+}
+
+/* ── Profile Dropdown menu in Sidebar Footer ──────────────── */
+.profile-dropdown {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 10px;
+  right: 10px;
+  background: var(--bg-overlay);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 10px;
+  display: none;
+  flex-direction: column;
+  z-index: 1000;
+  animation: dropdownIn 0.15s ease-out;
+}
+.profile-dropdown.open { display: flex; }
+@keyframes dropdownIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.dropdown-header {
+  padding: 6px 8px;
+}
+#dropdown-fullname {
+  font-weight: 500; font-size: 13px; color: var(--text-primary);
+}
+.clock-status-badge {
+  display: inline-block; font-size: 10px; font-weight: 600;
+  color: var(--text-secondary); background: var(--bg-hover);
+  padding: 2px 6px; border-radius: 99px; margin-top: 4px;
+  border: 1px solid var(--border-subtle);
+}
+.clock-status-badge.active {
+  color: var(--green); background: var(--green-soft);
+  border-color: rgba(34,197,94,0.2);
+}
+.dropdown-item {
+  background: transparent; border: none; outline: none;
+  font-family: var(--font-sans); font-size: 12.5px;
+  color: var(--text-secondary); text-align: left;
+  padding: 8px; border-radius: var(--radius-sm);
+  cursor: pointer; display: flex; align-items: center; gap: 8px;
+  transition: all var(--transition); width: 100%;
+}
+.dropdown-item:hover {
+  background: var(--bg-hover); color: var(--text-primary);
+}
+.dropdown-item.danger:hover {
+  background: var(--red-soft); color: var(--red);
+}
+.warning-item {
+  color: var(--amber) !important;
+}
+.warning-item:hover {
+  background: var(--amber-soft) !important;
+}
+
+/* ── Mobile Toggles & Overlay ──────────────────────────────── */
+.sidebar-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(2px);
+  z-index: 99;
+  display: none;
+}
+.sidebar-overlay.open { display: block; }
+
+/* ── Tablet & Mobile Responsiveness (Under 768px) ──────────── */
+@media (max-width: 768px) {
+  #app { flex-direction: column; }
+  
+  /* Sidebar Drawer slide-out */
+  #sidebar {
+    position: fixed;
+    left: 0; top: 0; bottom: 0;
+    transform: translateX(-100%);
+    transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    z-index: 1000;
+    width: 240px;
+    height: 100vh;
+    box-shadow: 10px 0 30px rgba(0, 0, 0, 0.7);
+  }
+  #sidebar.open { transform: translateX(0); }
+  
+  /* Show hamburger button */
+  #mobile-menu-toggle { display: inline-flex !important; }
+  
+  /* Topbar header space adjust */
+  #topbar { padding: 0 16px; }
+  .topbar-subtitle { display: none; }
+  #live-indicator-container { display: none !important; }
+  
+  /* Scroll inner area padding adjust */
+  .scroll-area { padding: 16px; }
+  
+  /* Grid conversions (Collapse to 1 column) */
+  .grid-4, .grid-3, .grid-2 {
+    grid-template-columns: 1fr !important;
+    gap: 12px;
+  }
+  
+  /* Stat cards spacing */
+  .stat-card { padding: 12px 14px; }
+  .stat-value { font-size: 22px; }
+  
+  /* Table wrapping for horizontal scroll protection */
+  .card { overflow-x: auto !important; }
+  .rp-table { min-width: 600px; }
+  .rp-table th, .rp-table td { padding: 8px 10px; font-size: 12px; }
+}
+
+/* ── Topbar Dropdown override & Danger Nav item ──────────────── */
+.profile-dropdown.topbar-dropdown {
+  bottom: auto;
+  top: calc(100% + 8px);
+  left: auto;
+  right: 0;
+  min-width: 180px;
+}
+.dropdown-item.danger {
+  color: var(--red);
+}
+.nav-item.danger-nav {
+  color: var(--red) !important;
+}
+.nav-item.danger-nav:hover {
+  background: var(--red-soft) !important;
+  color: var(--red) !important;
+}
+
