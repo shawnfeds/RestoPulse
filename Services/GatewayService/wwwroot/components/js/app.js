@@ -202,11 +202,11 @@ const Router = {
 
 /* ── Helpers ─────────────────────────────────────────────── */
 const Fmt = {
-  currency: (n) => '₹' + Number(n).toFixed(2),
+  currency: (n) => '₹' + (isNaN(Number(n)) ? '0.00' : Number(n).toFixed(2)),
   number:   (n) => Number(n).toLocaleString('en-IN'),
-  time:     (d) => new Date(d).toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit' }),
-  date:     (d) => new Date(d).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }),
-  datetime: (d) => `${Fmt.date(d)}, ${Fmt.time(d)}`,
+  time:     (d) => d ? new Date(d).toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit' }) : '—',
+  date:     (d) => d ? new Date(d).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }) : '—',
+  datetime: (d) => d ? `${Fmt.date(d)}, ${Fmt.time(d)}` : '—',
   elapsed:  (d) => {
     const mins = Math.floor((Date.now() - new Date(d)) / 60000);
     if (mins < 1)  return 'Just now';
@@ -439,7 +439,9 @@ window.handleLoginSubmit = async (event) => {
   } catch (e) {
     // Error is handled inside API.request toast
   }
-};window.handleLogout = (event) => {
+};
+
+window.handleLogout = (event) => {
   if (event) event.stopPropagation();
   stopBadgePolling();
   localStorage.removeItem('rp_token');

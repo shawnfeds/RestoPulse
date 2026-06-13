@@ -85,7 +85,7 @@ function renderBillList(bills) {
         <span class="badge badge-${b.settledAt?'green':'amber'}">${b.settledAt?'Settled':'Pending'}</span>
       </div>
       <div class="flex items-center justify-between">
-        <span style="font-weight:500">Table ${b.tableNo} · ${b.orderId}</span>
+        <span style="font-weight:500">Table ${b.tableNo} · ${b.orderNo || b.orderId}</span>
         <span style="font-weight:600;color:var(--rp-brand)">${Fmt.currency(b.total)}</span>
       </div>
       <div class="flex items-center justify-between mt-1">
@@ -109,7 +109,7 @@ function applyBillFilters() {
   if (window._billSearch) d = d.filter(b =>
     b.id.toString().toLowerCase().includes(window._billSearch) ||
     (b.billNo && b.billNo.toLowerCase().includes(window._billSearch)) ||
-    b.orderId.toLowerCase().includes(window._billSearch));
+    ((b.orderNo || b.orderId || '').toLowerCase().includes(window._billSearch)));
   renderBillList(d);
 }
 
@@ -141,7 +141,7 @@ window.selectBill = (id) => {
           <div style="background:var(--bg-raised);border-radius:var(--radius-md);padding:10px 12px">
             <div style="font-size:11px;color:var(--text-muted)">Table / Order</div>
             <div style="font-weight:600">Table ${b.tableNo}</div>
-            <div style="font-size:12px;color:var(--text-secondary);font-family:var(--font-mono)">${b.orderId}</div>
+            <div style="font-size:12px;color:var(--text-secondary);font-family:var(--font-mono)">${b.orderNo || b.orderId}</div>
           </div>
           <div style="background:var(--bg-raised);border-radius:var(--radius-md);padding:10px 12px">
             <div style="font-size:11px;color:var(--text-muted)">Date / Time</div>
@@ -161,12 +161,12 @@ window.selectBill = (id) => {
             </tr>
           </thead>
           <tbody>
-            ${b.items.map(i => `
+            ${(b.items || []).map(i => `
               <tr style="border-bottom:1px solid var(--border-subtle)">
                 <td style="padding:8px 0;font-size:13px">${i.name}</td>
                 <td style="padding:8px 0;text-align:center;color:var(--text-secondary)">${i.qty}</td>
-                <td style="padding:8px 0;text-align:right;color:var(--text-secondary)">${Fmt.currency(i.price)}</td>
-                <td style="padding:8px 0;text-align:right;font-weight:500">${Fmt.currency(i.price*i.qty)}</td>
+                <td style="padding:8px 0;text-align:right;color:var(--text-secondary)">${Fmt.currency(i.price || 0)}</td>
+                <td style="padding:8px 0;text-align:right;font-weight:500">${Fmt.currency((i.price || 0)*(i.qty || 1))}</td>
               </tr>`).join('')}
           </tbody>
         </table>
@@ -177,14 +177,14 @@ window.selectBill = (id) => {
             <span style="color:var(--text-muted)">Subtotal</span>
             <span>${Fmt.currency(b.subtotal)}</span>
           </div>
-          ${b.discount > 0 ? `
+          ${(b.discountAmount || b.discount || 0) > 0 ? `
             <div class="flex justify-between" style="margin-bottom:6px">
               <span style="color:var(--green)">Discount</span>
-              <span style="color:var(--green)">−${Fmt.currency(b.discount)}</span>
+              <span style="color:var(--green)">−${Fmt.currency(b.discountAmount || b.discount)}</span>
             </div>` : ''}
           <div class="flex justify-between" style="margin-bottom:10px">
-            <span style="color:var(--text-muted)">GST (18%)</span>
-            <span>${Fmt.currency(b.tax)}</span>
+            <span style="color:var(--text-muted)">GST (${b.taxRate ? (b.taxRate * 100).toFixed(0) : 18}%)</span>
+            <span>${Fmt.currency(b.taxAmount || b.tax)}</span>
           </div>
           <div class="flex justify-between" style="padding-top:10px;border-top:2px solid var(--border-mid)">
             <span style="font-size:18px;font-weight:700">Total</span>
@@ -414,7 +414,8 @@ function splitModalHTML() {
 /* ── Mock ─────────────────────────────────────────────────── */
 const MOCK_BILLING = {
   servedOrders: () => [
-    {id:'ORD-0091',tableNo:7,total:1227.2},{id:'ORD-0088',tableNo:5,total:637.2}
+    {orderNo:'ORD-0091',tableId:7,tableNo:7,total:1227.2,items:[]},
+    {orderNo:'ORD-0088',tableId:5,tableNo:5,total:637.2,items:[]}
   ],
   list: () => {
     const t = (m) => new Date(Date.now() - m*60000).toISOString();
