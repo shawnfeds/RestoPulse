@@ -1,4 +1,4 @@
-﻿using MediatR;
+using MediatR;
 using RestoPulse.InventoryService.Application.Commands;
 using RestoPulse.InventoryService.Application.Queries;
 using RestoPulse.InventoryService.Contracts;
@@ -37,6 +37,17 @@ public static class InventoryEndpoints
         })
         .WithName("AdjustStock")
         .WithSummary("Adjust stock — Addition, Deduction, or Correction");
+
+        group.MapGet("/usage-report", async (int? month, int? year, IMediator mediator) =>
+        {
+            var now = DateTime.UtcNow;
+            var m = Math.Clamp(month ?? now.Month, 1, 12);
+            var y = year ?? now.Year;
+            var result = await mediator.Send(new GetInventoryUsageQuery(m, y));
+            return Results.Ok(result);
+        })
+        .WithName("GetInventoryUsageReport")
+        .WithSummary("Get monthly inventory usage ranked by most consumed items");
 
         return group;
     }

@@ -29,6 +29,7 @@ if (app.Environment.IsDevelopment())
         using var scope = app.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<MenuDbContext>();
         await db.Database.MigrateAsync();
+        await MenuDbSeeder.SeedAsync(db);
     }
     catch (Exception ex)
     {

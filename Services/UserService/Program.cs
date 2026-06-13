@@ -29,6 +29,7 @@ if (app.Environment.IsDevelopment())
         using var scope = app.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<UserDbContext>();
         await db.Database.MigrateAsync();
+        await UserDbSeeder.SeedAsync(db);
     }
     catch (Exception ex)
     {

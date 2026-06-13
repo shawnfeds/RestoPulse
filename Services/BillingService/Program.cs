@@ -46,6 +46,7 @@ if (app.Environment.IsDevelopment())
         using var scope = app.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<BillingDbContext>();
         await db.Database.MigrateAsync();
+        await BillingDbSeeder.SeedAsync(db);
     }
     catch (Exception ex)
     {

@@ -86,6 +86,7 @@ const API = {
   inventoryItem:      (id)   => API.get(`/inventory/${id}`),
   inventoryAdjust:    (id,b) => API.post(`/inventory/${id}/adjust`, b),
   inventoryLowStock:  ()     => API.get('/inventory/low-stock'),
+  inventoryUsageReport: (month, year) => API.get(`/inventory/usage-report?month=${month}&year=${year}`),
 
   // Reports
   reportsRevenue:     (q)    => API.get(`/reports/revenue?${new URLSearchParams(q)}`),

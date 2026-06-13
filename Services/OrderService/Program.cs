@@ -43,6 +43,7 @@ if (app.Environment.IsDevelopment())
         using var scope = app.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<OrderDbContext>();
         await db.Database.MigrateAsync();
+        await OrderDbSeeder.SeedAsync(db);
     }
     catch (Exception ex)
     {
