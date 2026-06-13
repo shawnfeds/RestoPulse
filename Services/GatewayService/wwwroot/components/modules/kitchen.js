@@ -54,16 +54,16 @@ Router.register('kitchen', async () => {
   window._kdsTimers      = {};
 
   await loadKitchenQueue();
-  // Auto-refresh every 15s
-  window._kdsInterval = setInterval(loadKitchenQueue, 15000);
 });
 
-// Clean up timer when leaving
+// Clean up timers when leaving
 document.addEventListener('click', (e) => {
   const nav = e.target.closest('.nav-item');
-  if (nav && nav.dataset.page !== 'kitchen' && window._kdsInterval) {
-    clearInterval(window._kdsInterval);
-    Object.values(window._kdsTimers || {}).forEach(clearInterval);
+  if (nav && nav.dataset.page !== 'kitchen') {
+    if (window._kdsTimers) {
+      Object.values(window._kdsTimers).forEach(clearInterval);
+      window._kdsTimers = {};
+    }
   }
 });
 
@@ -74,7 +74,11 @@ async function loadKitchenQueue() {
   catch { data = MOCK_KDS.queue(); }
   window._kdsData = data;
   renderKDS();
-  updateBadge('kitchen', data.filter(i => i.status !== 'Ready').length);
+  if (typeof updateGlobalBadges === 'function') {
+    updateGlobalBadges();
+  } else {
+    updateBadge('kitchen', data.filter(i => i.status !== 'Ready').length);
+  }
 }
 
 function renderKDS() {
@@ -198,6 +202,7 @@ window.kdsSetStatus = async (id, status) => {
       if (status === 'Preparing') item.prepStartedAt = new Date().toISOString();
     }
     renderKDS();
+    if (typeof updateGlobalBadges === 'function') updateGlobalBadges();
     Toast.success(`Ticket ${id} → ${status}`);
   } catch { }
 };
@@ -208,6 +213,7 @@ window.kdsBump = async (id) => {
     window._kdsData = window._kdsData.filter(i => i.id != id);
     if (window._kdsTimers[id]) { clearInterval(window._kdsTimers[id]); delete window._kdsTimers[id]; }
     renderKDS();
+    if (typeof updateGlobalBadges === 'function') updateGlobalBadges();
     Toast.success('Ticket bumped');
   } catch { }
 };

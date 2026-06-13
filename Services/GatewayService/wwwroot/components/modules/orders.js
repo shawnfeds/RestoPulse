@@ -73,7 +73,11 @@ async function loadOrders() {
   window._ordersData     = data;
   window._ordersFiltered = data;
   renderOrderList(data);
-  updateBadge('orders', data.filter(o => o.status === 'New').length);
+  if (typeof updateGlobalBadges === 'function') {
+    updateGlobalBadges();
+  } else {
+    updateBadge('orders', data.filter(o => o.status === 'New').length);
+  }
 }
 
 /* ── List ─────────────────────────────────────────────────── */
@@ -211,6 +215,7 @@ window.setOrderStatus = async (id, status) => {
     if (o) o.status = status;
     selectOrder(id);
     applyOrderFilters();
+    if (typeof updateGlobalBadges === 'function') updateGlobalBadges();
     Toast.success(`Order ${id} → ${status}`);
   } catch { }
 };

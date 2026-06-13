@@ -288,17 +288,30 @@ async function loadInventory() {
   }
   window._invData = data;
 
+  const banner = document.getElementById('inv-low-stock-banner');
   if (lowStock.length > 0) {
-    document.getElementById('inv-low-stock-banner').style.display = 'block';
-    document.getElementById('inv-low-stock-banner').innerHTML = `
-      <div style="background:var(--amber-soft);border:1px solid rgba(245,158,11,0.3);border-radius:var(--radius-md);padding:10px 14px;display:flex;align-items:center;gap:10px">
-        <span style="color:var(--amber);font-size:16px">⚠</span>
-        <div>
-          <span style="font-weight:600;color:var(--amber)">${lowStock.length} items</span>
-          <span style="color:var(--text-secondary)"> below minimum threshold: </span>
-          <span style="color:var(--text-secondary)">${lowStock.map(i=>i.name).join(', ')}</span>
-        </div>
-      </div>`;
+    if (banner) {
+      banner.style.display = 'block';
+      banner.innerHTML = `
+        <div style="background:var(--amber-soft);border:1px solid rgba(245,158,11,0.3);border-radius:var(--radius-md);padding:10px 14px;display:flex;align-items:center;gap:10px">
+          <span style="color:var(--amber);font-size:16px">⚠</span>
+          <div>
+            <span style="font-weight:600;color:var(--amber)">${lowStock.length} items</span>
+            <span style="color:var(--text-secondary)"> below minimum threshold: </span>
+            <span style="color:var(--text-secondary)">${lowStock.map(i=>i.name).join(', ')}</span>
+          </div>
+        </div>`;
+    }
+  } else {
+    if (banner) {
+      banner.style.display = 'none';
+      banner.innerHTML = '';
+    }
+  }
+
+  if (typeof updateGlobalBadges === 'function') {
+    updateGlobalBadges();
+  } else {
     updateBadge('inventory', lowStock.length);
   }
   renderInventory();

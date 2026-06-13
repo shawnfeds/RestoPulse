@@ -68,6 +68,7 @@ async function loadBills() {
   catch { data = MOCK_BILLING.list(); }
   window._billsData = data;
   renderBillList(data);
+  if (typeof updateGlobalBadges === 'function') updateGlobalBadges();
 }
 
 /* ── List ─────────────────────────────────────────────────── */
@@ -279,6 +280,7 @@ window.submitSettle = async () => {
     if (b) { b.settledAt = new Date().toISOString(); b.paymentMethod = method; }
     applyBillFilters();
     selectBill(billId);
+    if (typeof updateGlobalBadges === 'function') updateGlobalBadges();
     Toast.success(`Bill settled via ${method}`);
   } catch { }
 };
