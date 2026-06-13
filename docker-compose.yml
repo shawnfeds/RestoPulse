@@ -1,0 +1,159 @@
+version: '3.8'
+
+services:
+  sql-server:
+    image: mcr.microsoft.com/azure-sql-edge:latest
+    container_name: sql-server
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=YourPassword@123!
+    ports:
+      - "1433:1433"
+    volumes:
+      - sql-data:/var/opt/mssql
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+  gateway-service:
+    image: restopulse-gatewayservice
+    build:
+      context: .
+      dockerfile: Services/GatewayService/Dockerfile
+    container_name: gateway-service
+    ports:
+      - "7055:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ReverseProxy__Clusters__menu-cluster__Destinations__d1__Address=http://menu-service:8080
+      - ReverseProxy__Clusters__table-cluster__Destinations__d1__Address=http://table-service:8080
+      - ReverseProxy__Clusters__order-cluster__Destinations__d1__Address=http://order-service:8080
+      - ReverseProxy__Clusters__kitchen-cluster__Destinations__d1__Address=http://kitchen-service:8080
+      - ReverseProxy__Clusters__billing-cluster__Destinations__d1__Address=http://billing-service:8080
+      - ReverseProxy__Clusters__inventory-cluster__Destinations__d1__Address=http://inventory-service:8080
+      - ReverseProxy__Clusters__report-cluster__Destinations__d1__Address=http://report-service:8080
+      - ReverseProxy__Clusters__user-cluster__Destinations__d1__Address=http://user-service:8080
+    depends_on:
+      - menu-service
+      - table-service
+      - order-service
+      - kitchen-service
+      - billing-service
+      - inventory-service
+      - report-service
+      - user-service
+
+  menu-service:
+    image: restopulse-menuservice
+    build:
+      context: .
+      dockerfile: Services/MenuService/Dockerfile
+    container_name: menu-service
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__menudb=Server=sql-server;Database=MenuDb;User Id=sa;Password=YourPassword@123!;Encrypt=True;TrustServerCertificate=True;
+    depends_on:
+      - sql-server
+
+  table-service:
+    image: restopulse-tableservice
+    build:
+      context: .
+      dockerfile: Services/TableService/Dockerfile
+    container_name: table-service
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__tabledb=Server=sql-server;Database=TableDb;User Id=sa;Password=YourPassword@123!;Encrypt=True;TrustServerCertificate=True;
+      - ConnectionStrings__messaging=amqp://guest:guest@rabbitmq:5672
+    depends_on:
+      - sql-server
+      - rabbitmq
+
+  order-service:
+    image: restopulse-orderservice
+    build:
+      context: .
+      dockerfile: Services/OrderService/Dockerfile
+    container_name: order-service
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__orderdb=Server=sql-server;Database=OrderDb;User Id=sa;Password=YourPassword@123!;Encrypt=True;TrustServerCertificate=True;
+      - ConnectionStrings__messaging=amqp://guest:guest@rabbitmq:5672
+    depends_on:
+      - sql-server
+      - rabbitmq
+
+  kitchen-service:
+    image: restopulse-kitchenservice
+    build:
+      context: .
+      dockerfile: Services/KitchenService/Dockerfile
+    container_name: kitchen-service
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__kitchendb=Server=sql-server;Database=KitchenDb;User Id=sa;Password=YourPassword@123!;Encrypt=True;TrustServerCertificate=True;
+      - ConnectionStrings__messaging=amqp://guest:guest@rabbitmq:5672
+    depends_on:
+      - sql-server
+      - rabbitmq
+
+  billing-service:
+    image: restopulse-billingservice
+    build:
+      context: .
+      dockerfile: Services/BillingService/Dockerfile
+    container_name: billing-service
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__billingdb=Server=sql-server;Database=BillingDb;User Id=sa;Password=YourPassword@123!;Encrypt=True;TrustServerCertificate=True;
+      - ConnectionStrings__messaging=amqp://guest:guest@rabbitmq:5672
+    depends_on:
+      - sql-server
+      - rabbitmq
+
+  inventory-service:
+    image: restopulse-inventoryservice
+    build:
+      context: .
+      dockerfile: Services/InventoryService/Dockerfile
+    container_name: inventory-service
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__inventorydb=Server=sql-server;Database=InventoryDb;User Id=sa;Password=YourPassword@123!;Encrypt=True;TrustServerCertificate=True;
+      - ConnectionStrings__messaging=amqp://guest:guest@rabbitmq:5672
+    depends_on:
+      - sql-server
+      - rabbitmq
+
+  report-service:
+    image: restopulse-reportservice
+    build:
+      context: .
+      dockerfile: Services/ReportService/Dockerfile
+    container_name: report-service
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__reportdb=Server=sql-server;Database=ReportDb;User Id=sa;Password=YourPassword@123!;Encrypt=True;TrustServerCertificate=True;
+      - ConnectionStrings__messaging=amqp://guest:guest@rabbitmq:5672
+    depends_on:
+      - sql-server
+      - rabbitmq
+
+  user-service:
+    image: restopulse-userservice
+    build:
+      context: .
+      dockerfile: Services/UserService/Dockerfile
+    container_name: user-service
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__userdb=Server=sql-server;Database=UserDb;User Id=sa;Password=YourPassword@123!;Encrypt=True;TrustServerCertificate=True;
+    depends_on:
+      - sql-server
+
+volumes:
+  sql-data:

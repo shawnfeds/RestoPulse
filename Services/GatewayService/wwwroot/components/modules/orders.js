@@ -73,7 +73,11 @@ async function loadOrders() {
   window._ordersData     = data;
   window._ordersFiltered = data;
   renderOrderList(data);
-  updateBadge('orders', data.filter(o => o.status === 'New').length);
+  if (typeof updateGlobalBadges === 'function') {
+    updateGlobalBadges();
+  } else {
+    updateBadge('orders', data.filter(o => o.status === 'New').length);
+  }
 }
 
 /* ── List ─────────────────────────────────────────────────── */
@@ -82,12 +86,12 @@ function renderOrderList(orders) {
   if (!orders.length) { el.innerHTML = '<div class="empty-state"><p>No orders</p></div>'; return; }
   const statusColors = { New:'blue', Preparing:'amber', Served:'green', Billed:'purple', Void:'gray' };
   el.innerHTML = orders.map(o => `
-    <div class="order-list-item ${o.id === window._selectedOrderId ? 'selected-order' : ''}"
-      onclick="selectOrder('${o.id}')"
+    <div class="order-list-item ${o.id == window._selectedOrderId || o.orderNo == window._selectedOrderId ? 'selected-order' : ''}"
+      onclick="selectOrder('${o.orderNo || o.id}')"
       style="padding:12px 14px;border-bottom:1px solid var(--border-subtle);cursor:pointer;
-             transition:background var(--transition);background:${o.id===window._selectedOrderId?'var(--bg-raised)':'transparent'}">
+             transition:background var(--transition);background:${(o.id==window._selectedOrderId || o.orderNo == window._selectedOrderId)?'var(--bg-raised)':'transparent'}">
       <div class="flex items-center justify-between mb-1">
-        <span style="font-family:var(--font-mono);font-size:12px;color:var(--text-secondary)">${o.id}</span>
+        <span style="font-family:var(--font-mono);font-size:12px;color:var(--text-secondary)">${o.orderNo || o.id}</span>
         <span class="badge badge-${statusColors[o.status]||'gray'}">${o.status}</span>
       </div>
       <div class="flex items-center justify-between">
@@ -113,7 +117,7 @@ function applyOrderFilters() {
   let d = window._ordersData;
   if (window._ordersFilter !== 'All') d = d.filter(o => o.status === window._ordersFilter);
   if (window._ordersSearch) d = d.filter(o =>
-    o.id.toLowerCase().includes(window._ordersSearch) ||
+    (o.orderNo || o.id.toString()).toLowerCase().includes(window._ordersSearch) ||
     String(o.tableNo).includes(window._ordersSearch)
   );
   window._ordersFiltered = d;
@@ -124,7 +128,7 @@ function applyOrderFilters() {
 window.selectOrder = (id) => {
   window._selectedOrderId = id;
   applyOrderFilters();
-  const o = window._ordersData.find(x => x.id === id);
+  const o = window._ordersData.find(x => x.id == id || x.orderNo == id);
   if (!o) return;
   const statusActions = {
     New:       ['Preparing', 'Void'],
@@ -134,7 +138,7 @@ window.selectOrder = (id) => {
     Void:      [],
   };
   const actions = (statusActions[o.status] || []).map(s =>
-    `<button class="btn btn-secondary btn-sm" onclick="setOrderStatus('${o.id}','${s}')">→ ${s}</button>`
+    `<button class="btn btn-secondary btn-sm" onclick="setOrderStatus('${o.orderNo || o.id}','${s}')">→ ${s}</button>`
   ).join('');
 
   document.getElementById('order-detail').innerHTML = `
@@ -142,7 +146,7 @@ window.selectOrder = (id) => {
       <div class="flex items-center justify-between mb-4">
         <div>
           <div class="flex items-center gap-3">
-            <span style="font-size:20px;font-weight:700">${o.id}</span>
+            <span style="font-size:20px;font-weight:700">${o.orderNo || o.id}</span>
             <span class="badge badge-blue">Table ${o.tableNo}</span>
           </div>
           <div class="text-muted text-sm mt-1">${Fmt.datetime(o.createdAt)} · ${o.staffName}</div>
@@ -207,10 +211,11 @@ window.selectOrder = (id) => {
 window.setOrderStatus = async (id, status) => {
   try {
     await API.orderSetStatus(id, status);
-    const o = window._ordersData.find(x => x.id === id);
+    const o = window._ordersData.find(x => x.id == id || x.orderNo == id);
     if (o) o.status = status;
     selectOrder(id);
     applyOrderFilters();
+    if (typeof updateGlobalBadges === 'function') updateGlobalBadges();
     Toast.success(`Order ${id} → ${status}`);
   } catch { }
 };
@@ -220,7 +225,7 @@ window.changeItemQty = async (orderId, itemId, delta, currentQty) => {
   if (newQty < 1) { removeOrderItem(orderId, itemId); return; }
   try {
     await API.orderUpdateItem(orderId, itemId, { qty: newQty });
-    const o = window._ordersData.find(x => x.id === orderId);
+    const o = window._ordersData.find(x => x.id == orderId || x.orderNo == orderId);
     if (o) {
       const item = o.items.find(i => i.id === itemId);
       if (item) {
@@ -239,7 +244,7 @@ window.removeOrderItem = async (orderId, itemId) => {
   if (!confirm('Remove this item?')) return;
   try {
     await API.orderRemoveItem(orderId, itemId);
-    const o = window._ordersData.find(x => x.id === orderId);
+    const o = window._ordersData.find(x => x.id == orderId || x.orderNo == orderId);
     if (o) {
       o.items = o.items.filter(i => i.id !== itemId);
       o.subtotal = o.items.reduce((s,i) => s + i.price*i.qty, 0);

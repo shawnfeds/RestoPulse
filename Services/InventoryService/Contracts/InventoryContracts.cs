@@ -1,4 +1,4 @@
-﻿namespace RestoPulse.InventoryService.Contracts;
+namespace RestoPulse.InventoryService.Contracts;
 
 public record InventoryItemResponse(
     int Id,
@@ -34,3 +34,12 @@ public record AdjustStockRequest(
     string Type,
     decimal Quantity,
     string? Reason);
+
+public record InventoryUsageResponse(
+    int Rank,
+    int ItemId,
+    string Name,
+    string Unit,
+    decimal TotalUsed,
+    decimal TotalCost,
+    int UsageCount);

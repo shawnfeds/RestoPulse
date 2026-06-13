@@ -288,17 +288,30 @@ async function loadInventory() {
   }
   window._invData = data;
 
+  const banner = document.getElementById('inv-low-stock-banner');
   if (lowStock.length > 0) {
-    document.getElementById('inv-low-stock-banner').style.display = 'block';
-    document.getElementById('inv-low-stock-banner').innerHTML = `
-      <div style="background:var(--amber-soft);border:1px solid rgba(245,158,11,0.3);border-radius:var(--radius-md);padding:10px 14px;display:flex;align-items:center;gap:10px">
-        <span style="color:var(--amber);font-size:16px">⚠</span>
-        <div>
-          <span style="font-weight:600;color:var(--amber)">${lowStock.length} items</span>
-          <span style="color:var(--text-secondary)"> below minimum threshold: </span>
-          <span style="color:var(--text-secondary)">${lowStock.map(i=>i.name).join(', ')}</span>
-        </div>
-      </div>`;
+    if (banner) {
+      banner.style.display = 'block';
+      banner.innerHTML = `
+        <div style="background:var(--amber-soft);border:1px solid rgba(245,158,11,0.3);border-radius:var(--radius-md);padding:10px 14px;display:flex;align-items:center;gap:10px">
+          <span style="color:var(--amber);font-size:16px">⚠</span>
+          <div>
+            <span style="font-weight:600;color:var(--amber)">${lowStock.length} items</span>
+            <span style="color:var(--text-secondary)"> below minimum threshold: </span>
+            <span style="color:var(--text-secondary)">${lowStock.map(i=>i.name).join(', ')}</span>
+          </div>
+        </div>`;
+    }
+  } else {
+    if (banner) {
+      banner.style.display = 'none';
+      banner.innerHTML = '';
+    }
+  }
+
+  if (typeof updateGlobalBadges === 'function') {
+    updateGlobalBadges();
+  } else {
     updateBadge('inventory', lowStock.length);
   }
   renderInventory();
@@ -422,77 +435,135 @@ const MOCK_INV = {
 /* ============================================================
    RestoPulse — Reports Module
    modules/reports (appended here for convenience)
-   ============================================================
-   GET /api/reports/revenue?from=&to=
-   Response: { "totalRevenue":48250, "totalOrders":87,
-               "avgOrderValue":554.6, "netProfit":19300,
-               "daily":[{ "date":"2024-01-15","revenue":8200,"orders":15 }] }
-
-   GET /api/reports/top-items?from=&to=
-   Response: [{ "itemId":1,"name":"Butter Chicken","totalSold":82,"revenue":26240,"rank":1 }]
    ============================================================ */
 
 Router.register('reports', async () => {
   const container = document.getElementById('page-reports');
+  const now = new Date();
+  const today = now.toISOString().split('T')[0];
+  const currentMonth = now.getMonth() + 1;
+  const currentYear  = now.getFullYear();
+
+  const months = [
+    {v:1,n:'January'},{v:2,n:'February'},{v:3,n:'March'},{v:4,n:'April'},
+    {v:5,n:'May'},{v:6,n:'June'},{v:7,n:'July'},{v:8,n:'August'},
+    {v:9,n:'September'},{v:10,n:'October'},{v:11,n:'November'},{v:12,n:'December'}
+  ];
+
   container.innerHTML = `
     <div class="scroll-area">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-        <div class="flex gap-2">
-          ${['Today','This Week','This Month','Custom'].map((s,i) =>
-            `<button class="btn btn-ghost btn-sm rpt-range ${i===1?'active-filter':''}" onclick="setReportRange('${s}',this)">${s}</button>`
-          ).join('')}
+
+      <!-- ── Section 1: Revenue Reports ─────────────────────────── -->
+      <div style="margin-bottom:28px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <h3 style="font-size:15px;font-weight:700;color:var(--text-primary);margin:0">📈 Revenue & Orders</h3>
+          <div class="flex gap-2">
+            ${['Today','This Week','This Month','Custom'].map((s,i) =>
+              `<button class="btn btn-ghost btn-sm rpt-range ${i===1?'active-filter':''}" onclick="setReportRange('${s}',this)">${s}</button>`
+            ).join('')}
+            <div class="flex gap-2" id="custom-range" style="display:none">
+              <input type="date" class="form-input" id="rpt-from" style="width:140px;height:34px">
+              <input type="date" class="form-input" id="rpt-to"   style="width:140px;height:34px">
+              <button class="btn btn-primary btn-sm" onclick="loadRevenueReport()">Apply</button>
+            </div>
+          </div>
         </div>
-        <div class="flex gap-2" id="custom-range" style="display:none!important">
-          <input type="date" class="form-input" id="rpt-from" style="width:140px;height:34px">
-          <input type="date" class="form-input" id="rpt-to"   style="width:140px;height:34px">
-          <button class="btn btn-primary btn-sm" onclick="loadReports()">Apply</button>
+        <div id="rpt-stats" class="grid-4 mb-4"></div>
+        <div class="grid-2 mb-2">
+          <div class="card">
+            <div class="card-header"><span class="card-title">Daily Revenue</span></div>
+            <div class="card-body" id="rpt-daily-chart" style="height:200px"></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><span class="card-title">Payment Methods</span></div>
+            <div class="card-body" id="rpt-payment-chart" style="height:200px;display:flex;align-items:center;justify-content:center"></div>
+          </div>
         </div>
       </div>
-      <div id="rpt-stats" class="grid-4 mb-4"></div>
-      <div class="grid-2 mb-4">
-        <div class="card">
-          <div class="card-header"><span class="card-title">Daily Revenue</span></div>
-          <div class="card-body" id="rpt-daily-chart" style="height:200px"></div>
+
+      <!-- ── Section 2: Dishes Sold ───────────────────────────────── -->
+      <div style="margin-bottom:28px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <h3 style="font-size:15px;font-weight:700;color:var(--text-primary);margin:0">🍽️ Dishes Sold</h3>
+          <div class="flex gap-2">
+            ${['Today','This Week','This Month'].map((s,i) =>
+              `<button class="btn btn-ghost btn-sm dishes-range ${i===1?'active-filter':''}" onclick="setDishesRange('${s}',this)">${s}</button>`
+            ).join('')}
+          </div>
         </div>
         <div class="card">
-          <div class="card-header"><span class="card-title">Top Items</span></div>
-          <div id="rpt-top-items"></div>
+          <div id="rpt-dishes-content" style="padding:0"></div>
         </div>
       </div>
+
+      <!-- ── Section 3: Inventory Usage ──────────────────────────── -->
+      <div style="margin-bottom:28px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <h3 style="font-size:15px;font-weight:700;color:var(--text-primary);margin:0">📦 Monthly Inventory Usage</h3>
+          <div class="flex gap-2 items-center">
+            <select class="form-select" id="inv-report-month" style="height:34px;font-size:12px;width:130px">
+              ${months.map(m => `<option value="${m.v}" ${m.v===currentMonth?'selected':''}>${m.n}</option>`).join('')}
+            </select>
+            <input class="form-input" type="number" id="inv-report-year" value="${currentYear}" min="2025" max="2035" style="height:34px;font-size:12px;width:80px">
+            <button class="btn btn-primary btn-sm" onclick="loadInventoryUsageReport()">Load Report</button>
+          </div>
+        </div>
+        <div class="card">
+          <div id="rpt-inv-usage-content" style="padding:0">
+            <div class="empty-state"><p style="color:var(--text-muted)">Select a month and click "Load Report"</p></div>
+          </div>
+        </div>
+      </div>
+
     </div>`;
 
-  window._rptRange = 'This Week';
-  await loadReports();
+  window._rptRange    = 'This Week';
+  window._dishesRange = 'This Week';
+  await loadRevenueReport();
+  await loadDishesReport();
 });
 
+/* ── Revenue Report ────────────────────────────────────────── */
 window.setReportRange = (s, btn) => {
   window._rptRange = s;
   document.querySelectorAll('.rpt-range').forEach(b => b.classList.remove('active-filter'));
   btn.classList.add('active-filter');
-  document.getElementById('custom-range').style.display = s === 'Custom' ? 'flex' : 'none';
-  if (s !== 'Custom') loadReports();
+  const customEl = document.getElementById('custom-range');
+  if (customEl) customEl.style.display = s === 'Custom' ? 'flex' : 'none';
+  if (s !== 'Custom') loadRevenueReport();
 };
 
-async function loadReports() {
+async function loadRevenueReport() {
   const q = buildReportQuery();
-  let rev, top;
+  let rev;
   try {
-    [rev, top] = await Promise.all([API.reportsRevenue(q), API.reportsTopItems(q)]);
+    rev = await API.reportsRevenue(q);
+    // Normalize API response field names to what renderers expect
+    rev.avgOrderValue    = rev.averageOrderValue ?? rev.avgOrderValue ?? 0;
+    rev.netProfit        = rev.netProfit ?? 0;
+    rev.daily            = rev.dailyBreakdown?.map(d => ({
+      date:    typeof d.date === 'string' ? d.date : d.date?.toString(),
+      revenue: d.revenue,
+      orders:  d.orders
+    })) ?? rev.daily ?? [];
+    rev.paymentBreakdown = (rev.paymentBreakdown ?? []).map(p => ({
+      method: p.method,
+      amount: p.amount
+    }));
   } catch {
     rev = MOCK_REPORTS.revenue();
-    top = MOCK_REPORTS.topItems();
   }
   renderRptStats(rev);
   renderRptChart(rev.daily);
-  renderTopItems(top);
+  renderPaymentChart(rev.paymentBreakdown || []);
 }
 
 function buildReportQuery() {
   const now   = new Date();
   const today = now.toISOString().split('T')[0];
   const ranges = {
-    'Today':      { from: today,                                             to: today },
-    'This Week':  { from: new Date(now - 7*86400000).toISOString().split('T')[0],  to: today },
+    'Today':      { from: today, to: today },
+    'This Week':  { from: new Date(now - 7*86400000).toISOString().split('T')[0], to: today },
     'This Month': { from: new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0], to: today },
     'Custom':     { from: document.getElementById('rpt-from')?.value || today, to: document.getElementById('rpt-to')?.value || today },
   };
@@ -500,7 +571,9 @@ function buildReportQuery() {
 }
 
 function renderRptStats(d) {
-  document.getElementById('rpt-stats').innerHTML = `
+  const el = document.getElementById('rpt-stats');
+  if (!el) return;
+  el.innerHTML = `
     <div class="stat-card"><div class="stat-label">Total Revenue</div><div class="stat-value">${Fmt.currency(d.totalRevenue)}</div></div>
     <div class="stat-card"><div class="stat-label">Total Orders</div><div class="stat-value">${Fmt.number(d.totalOrders)}</div></div>
     <div class="stat-card"><div class="stat-label">Avg Order Value</div><div class="stat-value">${Fmt.currency(d.avgOrderValue)}</div></div>
@@ -509,6 +582,7 @@ function renderRptStats(d) {
 
 function renderRptChart(daily) {
   const el = document.getElementById('rpt-daily-chart');
+  if (!el) return;
   if (!daily?.length) { el.innerHTML = '<div class="empty-state"><p>No data</p></div>'; return; }
   const max = Math.max(...daily.map(d => d.revenue));
   el.innerHTML = `<div style="display:flex;gap:4px;align-items:flex-end;height:100%;padding-bottom:20px">
@@ -520,30 +594,184 @@ function renderRptChart(daily) {
   </div>`;
 }
 
-function renderTopItems(items) {
-  const el = document.getElementById('rpt-top-items');
-  const max = Math.max(...items.map(i => i.totalSold));
-  el.innerHTML = `<div style="padding:12px 18px">
-    ${items.slice(0,8).map((i,idx) => `
-      <div style="display:flex;align-items:center;gap:10px;padding:7px 0;${idx<items.length-1?'border-bottom:1px solid var(--border-subtle)':''}">
-        <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted);width:18px">#${i.rank}</span>
-        <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${i.name}</div>
-          <div style="height:3px;background:var(--bg-raised);border-radius:2px;margin-top:4px">
-            <div style="height:100%;width:${(i.totalSold/max*100)}%;background:var(--rp-brand);border-radius:2px"></div>
+function renderPaymentChart(breakdown) {
+  const el = document.getElementById('rpt-payment-chart');
+  if (!el) return;
+  if (!breakdown?.length) {
+    el.innerHTML = '<div style="text-align:center;color:var(--text-muted);font-size:13px">No payment data</div>';
+    return;
+  }
+  const colors = ['var(--rp-brand)','var(--blue)','var(--green)','var(--purple)'];
+  const total = breakdown.reduce((s, b) => s + b.amount, 0);
+  el.innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:10px;width:100%;padding:8px 16px">
+      ${breakdown.map((b, i) => {
+        const pct = total > 0 ? Math.round(b.amount / total * 100) : 0;
+        return `<div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
+            <span style="font-weight:500">${b.method}</span>
+            <span style="color:var(--text-muted)">${pct}% · ${Fmt.currency(b.amount)}</span>
           </div>
-        </div>
-        <div style="text-align:right;flex-shrink:0">
-          <div style="font-size:12px;font-weight:600;color:var(--rp-brand)">${Fmt.currency(i.revenue)}</div>
-          <div style="font-size:11px;color:var(--text-muted)">${i.totalSold} sold</div>
-        </div>
-      </div>`).join('')}
-  </div>`;
+          <div style="height:6px;background:var(--bg-raised);border-radius:3px;overflow:hidden">
+            <div style="height:100%;width:${pct}%;background:${colors[i % colors.length]};border-radius:3px;transition:width .4s ease"></div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
 }
+
+/* ── Dishes Sold Report ───────────────────────────────────── */
+window.setDishesRange = (s, btn) => {
+  window._dishesRange = s;
+  document.querySelectorAll('.dishes-range').forEach(b => b.classList.remove('active-filter'));
+  btn.classList.add('active-filter');
+  loadDishesReport();
+};
+
+async function loadDishesReport() {
+  const el = document.getElementById('rpt-dishes-content');
+  if (!el) return;
+  el.innerHTML = '<div class="empty-state"><div class="skeleton" style="width:100%;height:280px;border-radius:8px;background:var(--bg-raised)"></div></div>';
+
+  const now   = new Date();
+  const today = now.toISOString().split('T')[0];
+  const ranges = {
+    'Today':      { from: today, to: today },
+    'This Week':  { from: new Date(now - 7*86400000).toISOString().split('T')[0], to: today },
+    'This Month': { from: new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0], to: today },
+  };
+  const q = ranges[window._dishesRange] || ranges['This Week'];
+
+  let items;
+  try {
+    items = await API.reportsTopItems({ ...q, limit: 20 });
+  } catch {
+    items = MOCK_REPORTS.topItems();
+  }
+
+  if (!items?.length) {
+    el.innerHTML = '<div class="empty-state"><p>No sales data for this period</p></div>';
+    return;
+  }
+
+  const maxQty = Math.max(...items.map(i => i.totalQuantity ?? i.totalSold ?? 0));
+
+  el.innerHTML = `
+    <table class="rp-table">
+      <thead>
+        <tr>
+          <th style="width:40px">#</th>
+          <th>Dish</th>
+          <th>Qty Sold</th>
+          <th>Revenue</th>
+          <th style="min-width:180px">Popularity</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${items.map((item, idx) => {
+          const qty = item.totalQuantity ?? item.totalSold ?? 0;
+          const rev = item.totalRevenue ?? item.revenue ?? 0;
+          const pct = maxQty > 0 ? (qty / maxQty * 100) : 0;
+          const medalEmoji = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : '';
+          return `
+            <tr>
+              <td style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted)">${medalEmoji || `#${idx+1}`}</td>
+              <td style="font-weight:500">${item.itemName ?? item.name}</td>
+              <td style="font-weight:700;color:var(--rp-brand)">${qty}</td>
+              <td style="font-weight:600">${Fmt.currency(rev)}</td>
+              <td>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <div style="flex:1;height:6px;background:var(--bg-raised);border-radius:3px;overflow:hidden">
+                    <div style="height:100%;width:${pct}%;background:var(--rp-brand);border-radius:3px"></div>
+                  </div>
+                  <span style="font-size:11px;color:var(--text-muted);width:30px;text-align:right">${Math.round(pct)}%</span>
+                </div>
+              </td>
+            </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
+}
+
+/* ── Inventory Usage Report ──────────────────────────────── */
+window.loadInventoryUsageReport = async () => {
+  const el = document.getElementById('rpt-inv-usage-content');
+  if (!el) return;
+
+  const month = parseInt(document.getElementById('inv-report-month').value);
+  const year  = parseInt(document.getElementById('inv-report-year').value);
+
+  el.innerHTML = '<div class="empty-state"><div class="skeleton" style="width:100%;height:300px;border-radius:8px;background:var(--bg-raised)"></div></div>';
+
+  let data;
+  try {
+    data = await API.inventoryUsageReport(month, year);
+  } catch {
+    data = MOCK_REPORTS.inventoryUsage();
+  }
+
+  if (!data?.length) {
+    el.innerHTML = '<div class="empty-state"><p>No usage data for this period</p></div>';
+    return;
+  }
+
+  const maxUsed = Math.max(...data.map(d => parseFloat(d.totalUsed ?? d.total_used ?? 0)));
+  const totalCost = data.reduce((s, d) => s + parseFloat(d.totalCost ?? d.total_cost ?? 0), 0);
+
+  el.innerHTML = `
+    <div style="padding:14px 18px;border-bottom:1px solid var(--border-subtle);display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:12px;color:var(--text-muted)">${data.length} ingredients tracked · Total estimated cost: <strong style="color:var(--text-primary)">${Fmt.currency(totalCost)}</strong></span>
+    </div>
+    <table class="rp-table">
+      <thead>
+        <tr>
+          <th style="width:40px">#</th>
+          <th>Ingredient</th>
+          <th>Unit</th>
+          <th>Total Used</th>
+          <th>Est. Cost</th>
+          <th>Transactions</th>
+          <th style="min-width:160px">Usage Level</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${data.map(item => {
+          const used = parseFloat(item.totalUsed ?? item.total_used ?? 0);
+          const cost = parseFloat(item.totalCost ?? item.total_cost ?? 0);
+          const txns = item.usageCount ?? item.usage_count ?? 0;
+          const pct  = maxUsed > 0 ? (used / maxUsed * 100) : 0;
+          const rank = item.rank ?? 0;
+          const color = pct > 75 ? 'var(--red)' : pct > 40 ? 'var(--amber)' : 'var(--green)';
+          return `
+            <tr>
+              <td style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted)">#${rank}</td>
+              <td style="font-weight:500">${item.name}</td>
+              <td><span class="badge badge-gray">${item.unit}</span></td>
+              <td style="font-weight:700;color:var(--text-primary)">${used.toFixed(2)} ${item.unit}</td>
+              <td style="font-weight:600;color:var(--rp-brand)">${Fmt.currency(cost)}</td>
+              <td style="color:var(--text-muted)">${txns}x</td>
+              <td>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <div style="flex:1;height:6px;background:var(--bg-raised);border-radius:3px;overflow:hidden">
+                    <div style="height:100%;width:${pct}%;background:${color};border-radius:3px"></div>
+                  </div>
+                  <span style="font-size:11px;color:var(--text-muted);width:30px;text-align:right">${Math.round(pct)}%</span>
+                </div>
+              </td>
+            </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
+};
 
 const MOCK_REPORTS = {
   revenue: () => ({
     totalRevenue: 287450, totalOrders: 512, avgOrderValue: 561.4, netProfit: 112450,
+    paymentBreakdown: [
+      { method: 'Card', amount: 143725 },
+      { method: 'UPI',  amount: 100107 },
+      { method: 'Cash', amount: 43618 },
+    ],
     daily: [
       {date:'2024-01-09',revenue:34200,orders:62},{date:'2024-01-10',revenue:41800,orders:74},
       {date:'2024-01-11',revenue:39500,orders:70},{date:'2024-01-12',revenue:52100,orders:91},
@@ -560,5 +788,15 @@ const MOCK_REPORTS = {
     {rank:6,itemId:7,name:'Garlic Naan',      totalSold:195,revenue:15600},
     {rank:7,itemId:9,name:'Gulab Jamun',      totalSold:87, revenue:10440},
     {rank:8,itemId:10,name:'Lassi',           totalSold:74, revenue:5920},
-  ]
+  ],
+  inventoryUsage: () => [
+    {rank:1,itemId:4,name:'Chicken Breasts',        unit:'kg',  totalUsed:87.50, totalCost:19250, usageCount:35},
+    {rank:2,itemId:1,name:'Spring Roll Wrappers',   unit:'pcs', totalUsed:1050,  totalCost:2100,  usageCount:35},
+    {rank:3,itemId:3,name:'Chicken Wings (Raw)',     unit:'kg',  totalUsed:63.00, totalCost:11340, usageCount:35},
+    {rank:4,itemId:5,name:'Paneer (Cottage Cheese)', unit:'kg',  totalUsed:52.50, totalCost:13125, usageCount:35},
+    {rank:5,itemId:10,name:'Lemons',                unit:'pcs', totalUsed:280,   totalCost:1400,  usageCount:35},
+    {rank:6,itemId:6,name:'Noodles (Raw)',           unit:'kg',  totalUsed:21.00, totalCost:1050,  usageCount:18},
+    {rank:7,itemId:11,name:'Mango Pulp',             unit:'kg',  totalUsed:14.00, totalCost:1680,  usageCount:18},
+    {rank:8,itemId:12,name:'Coffee Beans',           unit:'kg',  totalUsed:8.75,  totalCost:7000,  usageCount:18},
+  ],
 };

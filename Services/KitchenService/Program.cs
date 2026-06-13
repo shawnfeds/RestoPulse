@@ -46,6 +46,7 @@ if (app.Environment.IsDevelopment())
         using var scope = app.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<KitchenDbContext>();
         await db.Database.MigrateAsync();
+        await KitchenDbSeeder.SeedAsync(db);
     }
     catch (Exception ex)
     {

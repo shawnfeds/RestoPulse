@@ -86,6 +86,7 @@ const API = {
   inventoryItem:      (id)   => API.get(`/inventory/${id}`),
   inventoryAdjust:    (id,b) => API.post(`/inventory/${id}/adjust`, b),
   inventoryLowStock:  ()     => API.get('/inventory/low-stock'),
+  inventoryUsageReport: (month, year) => API.get(`/inventory/usage-report?month=${month}&year=${year}`),
 
   // Reports
   reportsRevenue:     (q)    => API.get(`/reports/revenue?${new URLSearchParams(q)}`),
@@ -243,6 +244,100 @@ function updateBadge(nav, count) {
   } else if (badge) badge.remove();
 }
 
+let _badgeIntervalId = null;
+
+async function updateGlobalBadges() {
+  if (!State.user) return;
+
+  // 1. Kitchen Badge
+  if (checkPageAllowed('kitchen')) {
+    try {
+      let data;
+      try { data = await API.kitchenQueue(); }
+      catch { data = typeof MOCK_KDS !== 'undefined' ? MOCK_KDS.queue() : []; }
+      const count = data.filter(i => i.status !== 'Ready').length;
+      updateBadge('kitchen', count);
+      
+      const active = document.getElementById('page-kitchen')?.classList.contains('active');
+      if (active) {
+        window._kdsData = data;
+        if (typeof renderKDS === 'function') renderKDS();
+      }
+    } catch (e) {
+      console.error('Error updating kitchen badge:', e);
+    }
+  }
+
+  // 2. Billing Badge
+  if (checkPageAllowed('billing')) {
+    try {
+      let data;
+      try { data = await API.billsList({}); }
+      catch { data = typeof MOCK_BILLING !== 'undefined' ? MOCK_BILLING.list() : []; }
+      const count = data.filter(b => !b.settledAt).length;
+      updateBadge('billing', count);
+
+      const active = document.getElementById('page-billing')?.classList.contains('active');
+      if (active) {
+        window._billsData = data;
+        if (typeof applyBillFilters === 'function') applyBillFilters();
+      }
+    } catch (e) {
+      console.error('Error updating billing badge:', e);
+    }
+  }
+
+  // 3. Orders Badge
+  if (checkPageAllowed('orders')) {
+    try {
+      let data;
+      try { data = await API.ordersList({}); }
+      catch { data = typeof MOCK_ORDERS !== 'undefined' ? MOCK_ORDERS.list() : []; }
+      const count = data.filter(o => o.status === 'New').length;
+      updateBadge('orders', count);
+
+      const active = document.getElementById('page-orders')?.classList.contains('active');
+      if (active) {
+        window._ordersData = data;
+        if (typeof applyOrderFilters === 'function') applyOrderFilters();
+      }
+    } catch (e) {
+      console.error('Error updating orders badge:', e);
+    }
+  }
+
+  // 4. Inventory Badge
+  if (checkPageAllowed('inventory')) {
+    try {
+      let data;
+      try { data = await API.inventoryLowStock(); }
+      catch { data = typeof MOCK_INV !== 'undefined' ? MOCK_INV.list().filter(i => i.currentStock <= i.minThreshold) : []; }
+      const count = data.length;
+      updateBadge('inventory', count);
+    } catch (e) {
+      console.error('Error updating inventory badge:', e);
+    }
+  }
+}
+
+function startBadgePolling() {
+  stopBadgePolling();
+  updateGlobalBadges();
+  _badgeIntervalId = setInterval(updateGlobalBadges, 15000);
+}
+
+function stopBadgePolling() {
+  if (_badgeIntervalId) {
+    clearInterval(_badgeIntervalId);
+    _badgeIntervalId = null;
+  }
+  updateBadge('kitchen', 0);
+  updateBadge('billing', 0);
+  updateBadge('orders', 0);
+  updateBadge('inventory', 0);
+}
+
+
 /* ── Authentication & Role Management ───────────────────── */
 
 function checkPageAllowed(pageId) {
@@ -344,10 +439,9 @@ window.handleLoginSubmit = async (event) => {
   } catch (e) {
     // Error is handled inside API.request toast
   }
-};
-
-window.handleLogout = (event) => {
+};window.handleLogout = (event) => {
   if (event) event.stopPropagation();
+  stopBadgePolling();
   localStorage.removeItem('rp_token');
   localStorage.removeItem('rp_user');
   State.token = null;
@@ -366,7 +460,6 @@ window.handleLogout = (event) => {
   
   Toast.info('Logged out successfully');
 };
-
 // ── Change Password Handlers ────────────────────────────────
 window.openChangePasswordModal = (event) => {
   if (event) event.stopPropagation();
@@ -496,6 +589,7 @@ function bootAuthenticatedUser() {
   
   applyRolePermissions();
   checkClockStatus();
+  startBadgePolling();
   
   // Route to entry page
   const entry = getFallbackPage();

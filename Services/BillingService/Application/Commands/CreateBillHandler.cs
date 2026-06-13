@@ -1,4 +1,4 @@
-﻿using MediatR;
+using MediatR;
 using RestoPulse.BillingService.Application.Queries;
 using RestoPulse.BillingService.Contracts;
 using RestoPulse.BillingService.Domain.Entities;
@@ -14,8 +14,11 @@ public class CreateBillHandler(BillingDbContext db)
     {
         var bill = Bill.Create(cmd.OrderNo, cmd.TableId, cmd.TableNo);
 
-        foreach (var item in cmd.Items)
-            bill.AddItem(item.MenuItemId, item.Name, item.Price, item.Qty);
+        if (cmd.Items != null)
+        {
+            foreach (var item in cmd.Items)
+                bill.AddItem(item.MenuItemId, item.Name, item.Price, item.Qty);
+        }
 
         db.Bills.Add(bill);
         await db.SaveChangesAsync(ct);

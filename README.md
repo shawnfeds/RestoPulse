@@ -22,7 +22,8 @@ The project is built to industry standards, demonstrating real-world microservic
 | 💳 **Billing & Invoices** | GST-compliant invoices, split bill, Cash/Card/UPI settlement |
 | 📋 **Menu Manager** | Categories, items, pricing, availability toggle |
 | 📦 **Inventory** | Stock levels, low-stock alerts, manual adjustments |
-| 📊 **Reports** | Daily revenue, top-selling items, order analytics |
+| 📊 **Reports** | Daily revenue, top-selling items, monthly inventory consumption, order analytics |
+| 👥 **Users & Shifts** | Staff profiles, role permissions (Owner/Manager/Chef/Server), shift scheduler, clock-in/out tracking (with late detection), and monthly hours reports |
 
 ---
 
@@ -31,25 +32,25 @@ The project is built to industry standards, demonstrating real-world microservic
 RestoPulse follows a **microservice architecture** with each business domain owned by an independent service with its own database. Services communicate asynchronously via **RabbitMQ** using integration events.
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    Frontend (Vanilla JS)                  │
-│              RestoPulse UI — index.html                   │
-└───────────────────────────┬─────────────────────────────┘
-                            │ HTTP
-                            ▼
-┌─────────────────────────────────────────────────────────┐
-│                   GatewayService (YARP)                   │
-│              JWT Auth · Rate Limiting · Routing           │
-└──┬──────┬──────┬──────┬──────┬──────┬──────┬───────────┘
-   │      │      │      │      │      │      │
-   ▼      ▼      ▼      ▼      ▼      ▼      ▼
-Menu  Table  Order  Kitchen Billing Inventory Report
- Svc   Svc    Svc    Svc     Svc     Svc      Svc
-  │      │      │      │       │       │        │
-  ▼      ▼      ▼      ▼       ▼       ▼        ▼
-menudb tabledb orderdb kitchendb billingdb invdb reportdb
-                  │                              ▲
-                  └──── RabbitMQ Events ─────────┘
+┌─────────────────────────────────────────────────────────────┐
+│                      Frontend (Vanilla JS)                  │
+│                RestoPulse UI — index.html                   │
+└─────────────────────────────┬───────────────────────────────┘
+                              │ HTTP
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                     GatewayService (YARP)                   │
+│                JWT Auth · Rate Limiting · Routing           │
+└──┬──────┬──────┬──────┬──────┬──────┬──────┬──────┬─────────┘
+   │      │      │      │      │      │      │      │
+   ▼      ▼      ▼      ▼      ▼      ▼      ▼      ▼
+ Menu  Table  Order  Kitchen Billing Inventory Report  User
+  Svc   Svc    Svc    Svc     Svc     Svc      Svc     Svc
+   │      │      │      │       │       │        │      │
+   ▼      ▼      ▼      ▼       ▼       ▼        ▼      ▼
+ menudb tabledb orderdb kitchendb billingdb invdb reportdb userdb
+                    │                              ▲
+                    └──── RabbitMQ Events ─────────┘
 ```
 
 ### Event Flow
@@ -127,24 +128,31 @@ RestoPulse/
 │   ├── BillingService/               # Bills, GST, payments
 │   ├── InventoryService/             # Stock, adjustments, auto-deduction
 │   ├── ReportService/                # Revenue aggregations, read models
-│   └── GatewayService/               # YARP reverse proxy, JWT auth
-├── Shared/
-│   ├── RestoPulse.Contracts/         # Shared DTOs and integration events
-│   └── RestoPulse.SharedKernel/      # Base classes, Result pattern
-└── frontend/
-    ├── index.html                    # App shell + sidebar
-    ├── css/main.css                  # Design system
-    ├── js/app.js                     # Router, API client, helpers
-    └── modules/                      # One JS file per domain module
-        ├── dashboard.js
-        ├── tables.js
-        ├── orders.js
-        ├── kitchen.js
-        ├── billing.js
-        └── menu-inventory-reports.js
+│   ├── UserService/                  # Staff management, shifts & schedules
+│   └── GatewayService/               # YARP reverse proxy, JWT auth, hosts SPA frontend under wwwroot/
+└── Shared/
+    ├── RestoPulse.Contracts/         # Shared DTOs and integration events
+    └── RestoPulse.SharedKernel/      # Base classes, Result pattern
 ```
 
-Each service follows the same internal structure:
+The SPA frontend structure inside `Services/GatewayService/wwwroot/` is:
+```
+wwwroot/
+├── index.html                        # App shell + sidebar
+├── css/main.css                      # Design system
+├── components/
+│   ├── js/app.js                     # Router, API client, helpers, global badge poller
+│   └── modules/                      # One JS file per domain module
+│       ├── dashboard.js
+│       ├── tables.js
+│       ├── orders.js
+│       ├── kitchen.js
+│       ├── billing.js
+│       ├── menu-inventory-reports.js
+│       └── users.js
+```
+
+Each service follows the Clean Architecture internal structure:
 ```
 ServiceName/
 ├── Api/Endpoints/        # Minimal API route handlers
@@ -156,7 +164,7 @@ ServiceName/
 │   ├── Enums/
 │   └── Events/           # Domain + integration events
 ├── Infrastructure/
-│   ├── Persistence/      # EF Core DbContext + Migrations
+│   ├── Persistence/      # EF Core DbContext + Migrations + seeders
 │   └── Messaging/        # MassTransit consumers
 └── Contracts/            # Request/Response DTOs
 ```
@@ -206,9 +214,11 @@ All services, databases, and RabbitMQ start automatically via Docker.
 
 **5. Open the frontend**
 
-Open `frontend/index.html` directly in a browser. The frontend runs fully on mock data out of the box — no backend required to explore the UI.
+The frontend is served directly by the `GatewayService` when the application runs. You can access it at `https://localhost:7055` (or whichever GatewayService port is assigned by the Aspire dashboard).
 
-To connect to the live backend, update `API.BASE` in `frontend/js/app.js`:
+Alternatively, you can open `Services/GatewayService/wwwroot/index.html` directly in a browser. The frontend runs fully on mock data out of the box — no backend required to explore the UI.
+
+To connect to the live backend when running standalone, update `API.BASE` in `Services/GatewayService/wwwroot/components/js/app.js`:
 ```js
 BASE: 'https://localhost:7055/api'  // GatewayService URL from Aspire dashboard
 ```
@@ -226,6 +236,9 @@ Each service exposes a Scalar UI at `/scalar/v1`. Find the service URLs in the A
 | OrderService | `https://localhost:{port}/scalar/v1` |
 | KitchenService | `https://localhost:{port}/scalar/v1` |
 | BillingService | `https://localhost:{port}/scalar/v1` |
+| InventoryService | `https://localhost:{port}/scalar/v1` |
+| ReportService | `https://localhost:{port}/scalar/v1` |
+| UserService | `https://localhost:{port}/scalar/v1` |
 
 Ports are assigned dynamically by Aspire and shown in the dashboard.
 
@@ -247,10 +260,11 @@ Ports are assigned dynamically by Aspire and shown in the dashboard.
 
 ## Roadmap
 
-- [ ] GatewayService — YARP routing + JWT authentication
-- [ ] BillingService — GST invoice generation + PDF export
-- [ ] InventoryService — auto-deduction on order completion
-- [ ] ReportService — materialized views + revenue aggregations
+- [x] GatewayService — YARP routing + JWT authentication
+- [x] UserService — Staff management, scheduling, clocking in/out, and hours reports
+- [x] BillingService — GST invoice generation and settlements
+- [x] InventoryService — Stock levels, adjustments, and deduction logic
+- [x] ReportService — Materialized views, revenue dashboards, and ingredient analytics
 - [ ] SignalR — push real-time updates to frontend KDS
 - [ ] Unit + integration tests per service
 - [ ] Docker Compose for non-Aspire deployment
@@ -271,6 +285,7 @@ This project is structured as a guided learning project. Each service is built i
 | BillingService | Complex business logic, GST calculation |
 | InventoryService | Event-driven side effects |
 | ReportService | Read models, event sourcing lite |
+| UserService | Staff authentication, shifts, and schedules |
 | GatewayService | YARP, JWT, cross-cutting concerns |
 
 ---

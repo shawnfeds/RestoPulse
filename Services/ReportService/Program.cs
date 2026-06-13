@@ -52,6 +52,7 @@ if (app.Environment.IsDevelopment())
         using var scope = app.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<ReportDbContext>();
         await db.Database.MigrateAsync();
+        await ReportDbSeeder.SeedAsync(db);
     }
     catch (Exception ex)
     {

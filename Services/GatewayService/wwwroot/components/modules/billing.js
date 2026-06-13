@@ -68,6 +68,7 @@ async function loadBills() {
   catch { data = MOCK_BILLING.list(); }
   window._billsData = data;
   renderBillList(data);
+  if (typeof updateGlobalBadges === 'function') updateGlobalBadges();
 }
 
 /* ── List ─────────────────────────────────────────────────── */
@@ -78,9 +79,9 @@ function renderBillList(bills) {
   el.innerHTML = bills.map(b => `
     <div onclick="selectBill('${b.id}')"
       style="padding:12px 14px;border-bottom:1px solid var(--border-subtle);cursor:pointer;
-             background:${b.id===window._selectedBill?'var(--bg-raised)':'transparent'};transition:background var(--transition)">
+             background:${b.id==window._selectedBill?'var(--bg-raised)':'transparent'};transition:background var(--transition)">
       <div class="flex items-center justify-between mb-1">
-        <span style="font-family:var(--font-mono);font-size:12px;color:var(--text-secondary)">${b.id}</span>
+        <span style="font-family:var(--font-mono);font-size:12px;color:var(--text-secondary)">${b.billNo || b.id}</span>
         <span class="badge badge-${b.settledAt?'green':'amber'}">${b.settledAt?'Settled':'Pending'}</span>
       </div>
       <div class="flex items-center justify-between">
@@ -106,7 +107,8 @@ function applyBillFilters() {
   if (window._billFilter === 'Settled') d = d.filter(b => !!b.settledAt);
   if (window._billFilter === 'Pending') d = d.filter(b => !b.settledAt);
   if (window._billSearch) d = d.filter(b =>
-    b.id.toLowerCase().includes(window._billSearch) ||
+    b.id.toString().toLowerCase().includes(window._billSearch) ||
+    (b.billNo && b.billNo.toLowerCase().includes(window._billSearch)) ||
     b.orderId.toLowerCase().includes(window._billSearch));
   renderBillList(d);
 }
@@ -115,7 +117,7 @@ function applyBillFilters() {
 window.selectBill = (id) => {
   window._selectedBill = id;
   applyBillFilters();
-  const b = window._billsData.find(x => x.id === id);
+  const b = window._billsData.find(x => x.id == id);
   if (!b) return;
   const isPending = !b.settledAt;
   const pmIcon = { Cash:'💵', Card:'💳', UPI:'📱' };
@@ -127,7 +129,7 @@ window.selectBill = (id) => {
         <div class="flex items-center justify-between mb-4">
           <div>
             <div style="font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--text-muted)">Invoice</div>
-            <div style="font-size:22px;font-weight:700;letter-spacing:-0.5px">${b.id}</div>
+            <div style="font-size:22px;font-weight:700;letter-spacing:-0.5px">${b.billNo || b.id}</div>
           </div>
           <div style="text-align:right">
             <div style="font-size:11px;color:var(--text-muted)">RestoPulse</div>
@@ -222,27 +224,46 @@ window.openNewBillModal = async () => {
   let orders;
   try { orders = await API.ordersList({ status: 'Served' }); }
   catch { orders = MOCK_BILLING.servedOrders(); }
+  window._servedOrders = orders;
   document.getElementById('bill-order-select').innerHTML = orders.map(o =>
-    `<option value="${o.id}">${o.id} — Table ${o.tableNo} (${Fmt.currency(o.total)})</option>`
+    `<option value="${o.orderNo}">${o.orderNo} — Table ${o.tableNo} (${Fmt.currency(o.total)})</option>`
   ).join('');
   Modal.open('modal-new-bill');
 };
 
 window.submitNewBill = async () => {
-  const orderId = document.getElementById('bill-order-select').value;
+  const orderNo = document.getElementById('bill-order-select').value;
   const paymentMethod = document.getElementById('bill-pm').value;
+  const order = (window._servedOrders || []).find(o => o.orderNo === orderNo);
+  if (!order) {
+    Toast.error('Order not found');
+    return;
+  }
+  
+  const body = {
+    orderNo: order.orderNo,
+    tableId: order.tableId,
+    tableNo: order.tableNo,
+    items: (order.items || []).map(i => ({
+      menuItemId: i.menuItemId,
+      name: i.name,
+      price: i.price,
+      qty: i.qty
+    }))
+  };
+
   try {
-    const b = await API.billCreate({ orderId, paymentMethod });
+    const b = await API.billCreate(body);
     Modal.close('modal-new-bill');
     await loadBills();
     selectBill(b.id);
-    Toast.success(`Bill ${b.id} created`);
+    Toast.success(`Bill ${b.billNo || b.id} created`);
   } catch { }
 };
 
 /* ── Settle ──────────────────────────────────────────────── */
 window.openSettleModal = (billId) => {
-  const b = window._billsData.find(x => x.id === billId);
+  const b = window._billsData.find(x => x.id == billId);
   document.getElementById('settle-total').textContent = Fmt.currency(b.total);
   document.getElementById('settle-bill-id').value = billId;
   Modal.open('modal-settle');
@@ -255,10 +276,11 @@ window.submitSettle = async () => {
   try {
     await API.billSettle(billId, { paymentMethod: method, amountTendered: tendered });
     Modal.close('modal-settle');
-    const b = window._billsData.find(x => x.id === billId);
+    const b = window._billsData.find(x => x.id == billId);
     if (b) { b.settledAt = new Date().toISOString(); b.paymentMethod = method; }
     applyBillFilters();
     selectBill(billId);
+    if (typeof updateGlobalBadges === 'function') updateGlobalBadges();
     Toast.success(`Bill settled via ${method}`);
   } catch { }
 };

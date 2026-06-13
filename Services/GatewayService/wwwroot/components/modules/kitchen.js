@@ -54,16 +54,16 @@ Router.register('kitchen', async () => {
   window._kdsTimers      = {};
 
   await loadKitchenQueue();
-  // Auto-refresh every 15s
-  window._kdsInterval = setInterval(loadKitchenQueue, 15000);
 });
 
-// Clean up timer when leaving
+// Clean up timers when leaving
 document.addEventListener('click', (e) => {
   const nav = e.target.closest('.nav-item');
-  if (nav && nav.dataset.page !== 'kitchen' && window._kdsInterval) {
-    clearInterval(window._kdsInterval);
-    Object.values(window._kdsTimers || {}).forEach(clearInterval);
+  if (nav && nav.dataset.page !== 'kitchen') {
+    if (window._kdsTimers) {
+      Object.values(window._kdsTimers).forEach(clearInterval);
+      window._kdsTimers = {};
+    }
   }
 });
 
@@ -74,7 +74,11 @@ async function loadKitchenQueue() {
   catch { data = MOCK_KDS.queue(); }
   window._kdsData = data;
   renderKDS();
-  updateBadge('kitchen', data.filter(i => i.status !== 'Ready').length);
+  if (typeof updateGlobalBadges === 'function') {
+    updateGlobalBadges();
+  } else {
+    updateBadge('kitchen', data.filter(i => i.status !== 'Ready').length);
+  }
 }
 
 function renderKDS() {
@@ -130,7 +134,7 @@ function kdsTicketHTML(item) {
       <!-- Ticket header -->
       <div style="padding:10px 14px;background:var(--bg-raised);border-bottom:1px solid var(--border-subtle);display:flex;align-items:center;justify-content:space-between">
         <div class="flex items-center gap-2">
-          <span style="font-family:var(--font-mono);font-size:12px;color:var(--text-muted)">${item.orderId}</span>
+          <span style="font-family:var(--font-mono);font-size:12px;color:var(--text-muted)">${item.orderNo || item.orderId}</span>
           ${item.priority === 'Rush' ? `<span class="badge badge-red pulse">RUSH</span>` : ''}
         </div>
         <span style="font-size:13px;font-weight:600;color:var(${urgency.color})" id="timer-${item.id}">${elapsed}</span>
@@ -192,12 +196,13 @@ window.kdsSetStatus = async (id, status) => {
   if (status === 'bump') { kdsBump(id); return; }
   try {
     await API.kitchenItemStatus(id, status);
-    const item = window._kdsData.find(i => i.id === id);
+    const item = window._kdsData.find(i => i.id == id);
     if (item) {
       item.status = status;
       if (status === 'Preparing') item.prepStartedAt = new Date().toISOString();
     }
     renderKDS();
+    if (typeof updateGlobalBadges === 'function') updateGlobalBadges();
     Toast.success(`Ticket ${id} → ${status}`);
   } catch { }
 };
@@ -205,9 +210,10 @@ window.kdsSetStatus = async (id, status) => {
 window.kdsBump = async (id) => {
   try {
     await API.kitchenItemBump(id);
-    window._kdsData = window._kdsData.filter(i => i.id !== id);
+    window._kdsData = window._kdsData.filter(i => i.id != id);
     if (window._kdsTimers[id]) { clearInterval(window._kdsTimers[id]); delete window._kdsTimers[id]; }
     renderKDS();
+    if (typeof updateGlobalBadges === 'function') updateGlobalBadges();
     Toast.success('Ticket bumped');
   } catch { }
 };
