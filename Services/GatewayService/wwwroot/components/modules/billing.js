@@ -287,26 +287,209 @@ window.submitSettle = async () => {
 
 /* ── Split ───────────────────────────────────────────────── */
 window.openSplitModal = (billId, total) => {
-  document.getElementById('split-bill-id').value = billId;
-  document.getElementById('split-total').textContent = Fmt.currency(total);
-  calcSplit(total, 2);
-  document.getElementById('split-by').oninput = function() { calcSplit(total, parseInt(this.value)||1); };
+  window._splitState = { billId, total, checks: [] };
+  _renderSplitSetup();
   Modal.open('modal-split');
 };
 
-function calcSplit(total, by) {
-  const amt = total / Math.max(by, 1);
-  document.getElementById('split-result').textContent = `Each person pays ${Fmt.currency(amt)}`;
+function _renderSplitSetup() {
+  const { total } = window._splitState;
+  document.getElementById('split-modal-title').textContent = 'Split Bill';
+  document.getElementById('split-modal-body').innerHTML = `
+    <div style="text-align:center;margin-bottom:20px">
+      <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Total Amount</div>
+      <div style="font-size:32px;font-weight:700;color:var(--rp-brand)">${Fmt.currency(total)}</div>
+    </div>
+    <div class="form-group mb-3">
+      <label class="form-label">Number of Guests</label>
+      <div style="display:flex;align-items:center;gap:10px">
+        <button onclick="_adjustSplitBy(-1)"
+          style="width:38px;height:38px;border-radius:var(--radius-md);border:1px solid var(--border-mid);
+                 background:var(--bg-raised);color:var(--text-primary);font-size:20px;cursor:pointer;
+                 display:flex;align-items:center;justify-content:center;flex-shrink:0">−</button>
+        <input class="form-input" type="number" id="split-by" min="2" max="20" value="2"
+          style="text-align:center;font-size:22px;font-weight:700;height:42px">
+        <button onclick="_adjustSplitBy(1)"
+          style="width:38px;height:38px;border-radius:var(--radius-md);border:1px solid var(--border-mid);
+                 background:var(--bg-raised);color:var(--text-primary);font-size:20px;cursor:pointer;
+                 display:flex;align-items:center;justify-content:center;flex-shrink:0">+</button>
+      </div>
+    </div>
+    <div id="split-preview"
+      style="text-align:center;padding:14px;background:var(--bg-raised);
+             border-radius:var(--radius-md);font-weight:600;color:var(--rp-brand)">
+      Each person pays ${Fmt.currency(total / 2)}
+    </div>
+  `;
+  document.getElementById('split-modal-footer').innerHTML = `
+    <button class="btn btn-secondary" onclick="_closeSplitModal()">Cancel</button>
+    <button class="btn btn-primary" onclick="_submitSplit()">Create Checks →</button>
+  `;
+  document.getElementById('split-by').addEventListener('input', function() {
+    const by = Math.max(parseInt(this.value) || 1, 1);
+    const amt = window._splitState.total / by;
+    document.getElementById('split-preview').textContent = `Each person pays ${Fmt.currency(amt)}`;
+  });
 }
 
-window.submitSplit = async () => {
-  const billId  = document.getElementById('split-bill-id').value;
-  const splitBy = parseInt(document.getElementById('split-by').value) || 2;
+window._adjustSplitBy = (delta) => {
+  const input = document.getElementById('split-by');
+  const next = Math.min(20, Math.max(2, (parseInt(input.value) || 2) + delta));
+  input.value = next;
+  const amt = window._splitState.total / next;
+  document.getElementById('split-preview').textContent = `Each person pays ${Fmt.currency(amt)}`;
+};
+
+window._submitSplit = async () => {
+  const { billId } = window._splitState;
+  const splitBy = Math.max(parseInt(document.getElementById('split-by').value) || 2, 2);
   try {
     const res = await API.billSplit(billId, { splitBy });
-    Modal.close('modal-split');
-    Toast.success(`Split into ${res.splitBy} — ${Fmt.currency(res.amountPerPerson)} each`);
+    window._splitState.checks = Array.from({ length: res.splitBy }, (_, i) => ({
+      index: i,
+      amount: res.amountPerPerson,
+      method: 'Cash',
+      paid: false
+    }));
+    _renderSplitChecks();
   } catch { }
+};
+
+function _renderSplitChecks() {
+  const { checks, total } = window._splitState;
+  const paidCount = checks.filter(c => c.paid).length;
+  const allPaid   = paidCount === checks.length;
+  const pmIcon    = { Cash: '💵', Card: '💳', UPI: '📱' };
+
+  document.getElementById('split-modal-title').innerHTML =
+    `Split Checks <span style="font-size:12px;color:var(--text-muted);font-weight:400;margin-left:6px">
+      ${paidCount}/${checks.length} paid</span>`;
+
+  document.getElementById('split-modal-body').innerHTML = `
+    <!-- Progress bar -->
+    <div style="margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <span style="font-size:12px;color:var(--text-muted)">Payment Progress</span>
+        <span style="font-size:12px;font-weight:600;color:${allPaid ? 'var(--green)' : 'var(--rp-brand)'}">
+          ${allPaid ? '✓ All Paid' : `${paidCount} of ${checks.length} paid`}
+        </span>
+      </div>
+      <div style="height:5px;background:var(--bg-raised);border-radius:99px;overflow:hidden">
+        <div style="height:100%;width:${(paidCount / checks.length) * 100}%;
+          background:${allPaid ? 'var(--green)' : 'var(--rp-brand)'};
+          border-radius:99px;transition:width 0.4s ease"></div>
+      </div>
+    </div>
+
+    <!-- Check cards -->
+    <div style="display:flex;flex-direction:column;gap:8px;max-height:340px;overflow-y:auto;padding-right:2px">
+      ${checks.map((c, i) => `
+        <div style="
+          border: 1.5px solid ${c.paid ? 'var(--green)' : 'var(--border-mid)'};
+          border-radius: var(--radius-lg);
+          padding: 12px 14px;
+          background: ${c.paid ? 'var(--green-soft)' : 'var(--bg-raised)'};
+          transition: all 0.25s ease;
+        ">
+          <div style="display:flex;align-items:center;justify-content:space-between;
+                      margin-bottom:${c.paid ? '0' : '10px'}">
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="width:26px;height:26px;border-radius:50%;
+                background:${c.paid ? 'var(--green)' : 'var(--bg-overlay)'};
+                border:1.5px solid ${c.paid ? 'var(--green)' : 'var(--border-mid)'};
+                display:flex;align-items:center;justify-content:center;
+                font-size:11px;font-weight:700;
+                color:${c.paid ? '#fff' : 'var(--text-muted)'}">
+                ${c.paid ? '✓' : i + 1}
+              </div>
+              <span style="font-weight:600;font-size:13px">Check ${i + 1}</span>
+              ${c.paid ? `<span style="font-size:11px;color:var(--green);font-weight:500">${pmIcon[c.method]} ${c.method}</span>` : ''}
+            </div>
+            <span style="font-size:17px;font-weight:700;
+              color:${c.paid ? 'var(--green)' : 'var(--text-primary)'}">
+              ${Fmt.currency(c.amount)}
+            </span>
+          </div>
+          ${!c.paid ? `
+            <div style="display:flex;gap:6px;align-items:center">
+              <div style="display:flex;gap:4px;flex:1">
+                ${['Cash', 'Card', 'UPI'].map(m => `
+                  <button onclick="_setSplitMethod(${i},'${m}')"
+                    style="flex:1;padding:5px 2px;border-radius:var(--radius-sm);font-size:11px;
+                      font-weight:500;cursor:pointer;transition:all 0.15s;
+                      border:1.5px solid ${c.method === m ? 'var(--rp-brand)' : 'var(--border-subtle)'};
+                      background:${c.method === m ? 'var(--rp-brand-soft)' : 'transparent'};
+                      color:${c.method === m ? 'var(--rp-brand)' : 'var(--text-secondary)'}">
+                    ${pmIcon[m]} ${m}
+                  </button>
+                `).join('')}
+              </div>
+              <button onclick="_markSplitPaid(${i})"
+                style="padding:6px 12px;border-radius:var(--radius-md);
+                  background:var(--rp-brand);color:#fff;
+                  border:none;font-size:12px;font-weight:600;
+                  cursor:pointer;white-space:nowrap;flex-shrink:0">
+                Mark Paid
+              </button>
+            </div>
+          ` : ''}
+        </div>
+      `).join('')}
+    </div>
+
+    <!-- Total summary row -->
+    <div style="margin-top:12px;padding:10px 14px;background:var(--bg-overlay);
+      border-radius:var(--radius-md);display:flex;justify-content:space-between;font-size:13px">
+      <span style="color:var(--text-muted)">Bill Total</span>
+      <span style="font-weight:700">${Fmt.currency(total)}</span>
+    </div>
+  `;
+
+  document.getElementById('split-modal-footer').innerHTML = allPaid ? `
+    <button class="btn btn-secondary" onclick="_closeSplitModal()">Cancel</button>
+    <button class="btn btn-primary" onclick="_settleAllSplits()"
+      style="background:var(--green);border-color:var(--green)">
+      ✓ Settle Bill &amp; Close
+    </button>
+  ` : `
+    <button class="btn btn-secondary" onclick="_closeSplitModal()">Cancel</button>
+    <button class="btn btn-primary" disabled
+      style="opacity:0.35;cursor:not-allowed">
+      Waiting for ${checks.length - paidCount} more…
+    </button>
+  `;
+}
+
+window._setSplitMethod = (index, method) => {
+  window._splitState.checks[index].method = method;
+  _renderSplitChecks();
+};
+
+window._markSplitPaid = (index) => {
+  window._splitState.checks[index].paid = true;
+  _renderSplitChecks();
+};
+
+window._settleAllSplits = async () => {
+  const { billId, checks, total } = window._splitState;
+  // Use the most-used payment method across all checks
+  const tally = checks.reduce((acc, c) => { acc[c.method] = (acc[c.method] || 0) + 1; return acc; }, {});
+  const dominant = Object.entries(tally).sort((a, b) => b[1] - a[1])[0][0];
+  try {
+    await API.billSettle(billId, { paymentMethod: dominant, amountTendered: total });
+    _closeSplitModal();
+    const b = window._billsData.find(x => x.id == billId);
+    if (b) { b.settledAt = new Date().toISOString(); b.paymentMethod = dominant; }
+    applyBillFilters();
+    selectBill(billId);
+    if (typeof updateGlobalBadges === 'function') updateGlobalBadges();
+    Toast.success(`Bill settled! ${checks.length} checks · ${Fmt.currency(total)} total`);
+  } catch { }
+};
+
+window._closeSplitModal = () => {
+  Modal.close('modal-split');
+  window._splitState = null;
 };
 
 window.printBill = (id) => { Toast.info('Sending to printer…'); };
@@ -386,26 +569,15 @@ window.selectPayMethod = (m, btn) => {
 function splitModalHTML() {
   return `
     <div class="modal-backdrop" id="modal-split">
-      <div class="modal">
+      <div class="modal" style="max-width:500px">
         <div class="modal-header">
-          <span class="modal-title">Split Bill</span>
-          <button class="btn btn-ghost btn-icon" onclick="Modal.close('modal-split')">✕</button>
+          <span class="modal-title" id="split-modal-title">Split Bill</span>
+          <button class="btn btn-ghost btn-icon" onclick="_closeSplitModal()">✕</button>
         </div>
-        <div class="modal-body">
-          <input type="hidden" id="split-bill-id">
-          <div style="text-align:center;margin-bottom:20px">
-            <div style="font-size:11px;color:var(--text-muted)">Total Amount</div>
-            <div style="font-size:28px;font-weight:700" id="split-total"></div>
-          </div>
-          <div class="form-group mb-3">
-            <label class="form-label">Split By (people)</label>
-            <input class="form-input" type="number" id="split-by" min="2" max="20" value="2">
-          </div>
-          <div style="text-align:center;padding:14px;background:var(--bg-raised);border-radius:var(--radius-md);font-weight:600;color:var(--rp-brand)" id="split-result"></div>
-        </div>
-        <div class="modal-footer">
-          <button class="btn btn-secondary" onclick="Modal.close('modal-split')">Cancel</button>
-          <button class="btn btn-primary" onclick="submitSplit()">Apply Split</button>
+        <div class="modal-body" id="split-modal-body"></div>
+        <div class="modal-footer" id="split-modal-footer">
+          <button class="btn btn-secondary" onclick="_closeSplitModal()">Cancel</button>
+          <button class="btn btn-primary" onclick="_submitSplit()">Create Checks →</button>
         </div>
       </div>
     </div>`;
