@@ -305,7 +305,7 @@ window.submitSplit = async () => {
   try {
     const res = await API.billSplit(billId, { splitBy });
     Modal.close('modal-split');
-    Toast.success(`Split into ${splitBy} — ${Fmt.currency(res.splits[0].amount)} each`);
+    Toast.success(`Split into ${res.splitBy} — ${Fmt.currency(res.amountPerPerson)} each`);
   } catch { }
 };
 
