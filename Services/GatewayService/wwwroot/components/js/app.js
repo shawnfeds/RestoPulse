@@ -108,6 +108,11 @@ const API = {
   setSchedule:        (body)  => API.post('/users/schedule', body),
   getSchedules:       (date)  => API.get(`/users/schedules?date=${date}`),
   userMonthlyReport:  (uid,m,y) => API.get(`/users/reports/monthly?targetUserId=${uid}&month=${m}&year=${y}`),
+
+  // Notifications
+  notificationsList:        ()   => API.get('/notifications'),
+  notificationMarkRead:     (id) => API.post(`/notifications/${id}/read`, {}),
+  notificationsMarkAllRead: ()   => API.post('/notifications/read-all', {}),
 };
 
 /* ── Global State ────────────────────────────────────────── */
@@ -318,6 +323,11 @@ async function updateGlobalBadges() {
       console.error('Error updating inventory badge:', e);
     }
   }
+
+  // 5. Notifications Poll
+  if (typeof Notifications !== 'undefined') {
+    try { await Notifications.poll(); } catch (e) { console.error('Error polling notifications:', e); }
+  }
 }
 
 function startBadgePolling() {
@@ -444,6 +454,9 @@ window.handleLoginSubmit = async (event) => {
 window.handleLogout = (event) => {
   if (event) event.stopPropagation();
   stopBadgePolling();
+  if (typeof Notifications !== 'undefined') {
+    Notifications.clear();
+  }
   localStorage.removeItem('rp_token');
   localStorage.removeItem('rp_user');
   State.token = null;
@@ -591,6 +604,9 @@ function bootAuthenticatedUser() {
   
   applyRolePermissions();
   checkClockStatus();
+  if (typeof Notifications !== 'undefined') {
+    Notifications.init();
+  }
   startBadgePolling();
   
   // Route to entry page

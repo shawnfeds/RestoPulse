@@ -268,12 +268,19 @@ window.openAddItemModal = async (orderId) => {
 };
 
 window.submitAddItem = async () => {
-  const menuItemId = parseInt(document.getElementById('new-item-select').value);
+  const sel        = document.getElementById('new-item-select');
+  const menuItemId = parseInt(sel.value);
   const qty        = parseInt(document.getElementById('new-item-qty').value) || 1;
   const notes      = document.getElementById('new-item-notes').value;
   const orderId    = window._currentOrderId;
+
+  // Extract name and price from the selected <option>
+  const selectedOption = sel.options[sel.selectedIndex];
+  const name  = selectedOption ? selectedOption.textContent.split(' — ')[0].trim() : '';
+  const price = parseFloat(selectedOption?.dataset.price || '0');
+
   try {
-    const res = await API.orderAddItem(orderId, { menuItemId, qty, notes });
+    const res = await API.orderAddItem(orderId, { menuItemId, name, price, qty, notes });
     Modal.close('modal-add-item');
     await loadOrders();
     selectOrder(orderId);

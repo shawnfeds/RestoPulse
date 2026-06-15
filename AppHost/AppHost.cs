@@ -19,6 +19,7 @@ var billingDb = sqlServer.AddDatabase("billingdb");
 var inventoryDb = sqlServer.AddDatabase("inventorydb");
 var reportDb = sqlServer.AddDatabase("reportdb");
 var userDb = sqlServer.AddDatabase("userdb");
+var notificationDb = sqlServer.AddDatabase("notificationdb");
 
 // ── Services ───────────────────────────────────────────────
 var menuSvc = builder.AddProject<Projects.RestoPulse_MenuService>("menu-service")
@@ -65,6 +66,12 @@ var userSvc = builder.AddProject<Projects.RestoPulse_UserService>("user-service"
     .WithReference(userDb)
     .WaitFor(userDb);
 
+var notificationSvc = builder.AddProject<Projects.RestoPulse_NotificationService>("notification-service")
+    .WithReference(notificationDb)
+    .WithReference(rabbit)
+    .WaitFor(notificationDb)
+    .WaitFor(rabbit);
+
 // ── Gateway (all frontend traffic enters here) ─────────────
 builder.AddProject<Projects.RestoPulse_GatewayService>("gateway-service")
     .WithReference(menuSvc)
@@ -75,6 +82,7 @@ builder.AddProject<Projects.RestoPulse_GatewayService>("gateway-service")
     .WithReference(inventorySvc)
     .WithReference(reportSvc)
     .WithReference(userSvc)
+    .WithReference(notificationSvc)
     .WithExternalHttpEndpoints();
 
 builder.Build().Run();

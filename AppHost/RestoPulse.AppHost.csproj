@@ -23,6 +23,7 @@
     <ProjectReference Include="..\Services\InventoryService\RestoPulse.InventoryService.csproj" />
     <ProjectReference Include="..\Services\ReportService\RestoPulse.ReportService.csproj" />
     <ProjectReference Include="..\Services\UserService\RestoPulse.UserService.csproj" />
+    <ProjectReference Include="..\Services\NotificationService\RestoPulse.NotificationService.csproj" />
     <ProjectReference Include="..\Services\GatewayService\RestoPulse.GatewayService.csproj" />
   </ItemGroup>
 
