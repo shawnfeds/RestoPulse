@@ -113,7 +113,10 @@
           <span style="font-size:12px;color:var(--text-muted)">Live</span>
         </div>
         <div style="font-size:12px;color:var(--text-muted)" id="topbar-clock"></div>
-        <button class="btn btn-ghost btn-icon" title="Notifications">🔔</button>
+        <div style="position:relative;">
+          <button class="btn btn-ghost btn-icon" id="btn-notifications" title="Notifications" onclick="Notifications.togglePanel(event)">🔔</button>
+          <div id="notif-panel"></div>
+        </div>
         <div class="topbar-profile-container" style="position: relative;">
           <div id="header-avatar-badge" onclick="toggleTopbarProfileMenu(event)" style="width:32px;height:32px;background:var(--rp-brand-soft);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--rp-brand);font-weight:600;border:1px solid var(--rp-brand-glow);cursor:pointer;" title="Profile Menu">U</div>
           <!-- Topbar Dropdown Menu -->
@@ -215,6 +218,7 @@
      SCRIPTS — order matters
 ══════════════════════════════════════════ -->
 <script src="components/js/app.js"></script>
+<script src="components/js/notifications.js"></script>
 <script src="components/modules/dashboard.js"></script>
 <script src="components/modules/tables.js"></script>
 <script src="components/modules/orders.js"></script>

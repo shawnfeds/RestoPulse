@@ -9,6 +9,9 @@
   <Folder Name="/Services/BillingService/">
     <Project Path="Services/BillingService/RestoPulse.BillingService.csproj" />
   </Folder>
+  <Folder Name="/Services/NotificationService/">
+    <Project Path="Services/NotificationService/RestoPulse.NotificationService.csproj" />
+  </Folder>
   <Folder Name="/Services/GatewayService/">
     <Project Path="Services/GatewayService/RestoPulse.GatewayService.csproj" />
   </Folder>
